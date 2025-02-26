@@ -263,3 +263,61 @@
   justify-content: center;
   height: 100%;
 }
+
+.highlighted-editor-container {
+  position: relative;
+  background-color: #fff;
+  border-radius: 4px;
+}
+
+.highlighted-editor-container .ant-input {
+  color: transparent;
+  caret-color: #000; /* 使光标可见 */
+}
+
+.syntax-highlight {
+  color: #000;
+  z-index: 0;
+}
+
+/* 建议下拉框样式 */
+.suggestions-dropdown {
+  position: absolute;
+  z-index: 1000;
+  background-color: #fff;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  width: 300px;
+  max-height: 250px;
+  overflow-y: auto;
+  margin-top: 4px;
+}
+
+.suggestion-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover {
+  background-color: #f5f5f5;
+}
+
+.editor-tips {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+/* 覆盖现有样式使TextArea背景透明 */
+.formula-textarea {
+  background-color: transparent !important;
+}
