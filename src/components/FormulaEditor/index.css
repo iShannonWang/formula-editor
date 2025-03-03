@@ -1,0 +1,412 @@
+/* FormulaEditor.css */
+.formula-editor-layout {
+  display: flex;
+  flex-direction: column;
+  background-color: #f0f2f5;
+  overflow: hidden;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 1200px;
+  margin: 0 auto;
+  height: 100%;
+}
+
+.formula-content {
+  padding: 24px;
+  width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.formula-section {
+  background-color: white;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.formula-label {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  color: #333;
+}
+
+.example-formula-container {
+  margin-bottom: 16px;
+  padding: 12px;
+  background-color: #f5f5f5;
+  border-radius: 6px;
+  border: 1px dashed #d9d9d9;
+}
+
+.example-formula {
+  line-height: 2;
+}
+
+.formula-part {
+  margin: 2px;
+}
+
+.formula-text {
+  padding: 0 2px;
+  font-family: 'Fira Code', monospace;
+}
+
+.editor-wrapper {
+  position: relative;
+}
+
+.editor-container {
+  height: 120px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* 第二个示例区域样式 */
+.example-editor-container {
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.example-arrow {
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.error-message {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-radius: 4px;
+  color: #ff4d4f;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panels-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.panels-layout {
+  flex: 1;
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  display: flex;
+}
+
+.left-sider,
+.right-sider {
+  overflow: hidden;
+  background-color: white;
+  border-right: 1px solid #f0f0f0;
+}
+
+.middle-content {
+  flex: 1;
+  overflow: hidden;
+  background-color: white;
+}
+
+.panel-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-card .ant-card-head {
+  padding: 12px 16px;
+  min-height: auto;
+  flex-shrink: 0;
+}
+
+.panel-card .ant-card-head-title {
+  padding: 0;
+  font-size: 16px;
+}
+
+.panel-card .ant-card-body {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.search-input {
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.fields-container {
+  margin-bottom: 16px;
+}
+
+.field-item,
+.function-item {
+  cursor: pointer;
+  transition: all 0.3s;
+  border-radius: 4px;
+}
+
+.field-item:hover,
+.function-item:hover {
+  background-color: #f5f5f5;
+}
+
+.field-item-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.function-doc {
+  padding: 12px;
+}
+
+.actions-section {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+  flex-shrink: 0;
+}
+
+/* 按钮颜色样式 */
+.ant-btn-success {
+  background-color: #52c41a;
+  border-color: #52c41a;
+  color: white;
+}
+
+.ant-btn-success:hover {
+  background-color: #73d13d;
+  border-color: #73d13d;
+  color: white;
+}
+
+.ant-btn-info {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  color: white;
+}
+
+.ant-btn-info:hover {
+  background-color: #40a9ff;
+  border-color: #40a9ff;
+  color: white;
+}
+
+/* 函数详情弹窗样式 */
+.function-detail-modal {
+  /* padding: 12px; */
+}
+
+.syntax-box {
+  background-color: #f5f5f5;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.example-box {
+  background-color: #f5f5f5;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+/* 测试结果弹窗样式 */
+.test-result-modal {
+  padding: 12px;
+}
+
+.test-result-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.test-result-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.test-formula {
+  margin-bottom: 24px;
+}
+
+.formula-code {
+  background-color: #f5f5f5;
+  padding: 12px;
+  border-radius: 6px;
+  margin-top: 8px;
+}
+
+.test-result {
+  margin-bottom: 24px;
+}
+
+.result-value {
+  font-size: 18px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+.result-meta {
+  display: flex;
+  gap: 8px;
+}
+
+/* 翻译弹窗样式 */
+.translation-modal .ant-modal-body {
+  padding: 24px;
+}
+
+.translation-success {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.translation-success-icon {
+  font-size: 22px;
+  color: #52c41a;
+  margin-right: 12px;
+}
+
+/* 高亮变量样式 */
+.variable-highlight {
+  color: #2196f3 !important;
+  font-weight: bold;
+  background-color: rgba(33, 150, 243, 0.1);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+/* CodeMirror 自定义样式 */
+.cm-editor {
+  font-size: 14px !important;
+}
+
+.cm-content {
+  font-family: 'Fira Code', monospace !important;
+  padding: 8px !important;
+}
+
+.cm-line {
+  padding: 2px 0 !important;
+  line-height: 1.6 !important;
+}
+
+/* 关键词高亮样式 */
+.cm-keyword {
+  color: #7c4dff !important;
+  font-weight: 500 !important;
+}
+
+.cm-string {
+  color: #29b6f6 !important;
+}
+
+.cm-number {
+  color: #ff9100 !important;
+}
+
+.cm-operator {
+  color: #f50057 !important;
+}
+
+.cm-function {
+  color: #00c853 !important;
+  font-weight: 500 !important;
+}
+
+.cm-comment {
+  color: #757575 !important;
+  font-style: italic !important;
+}
+
+.cm-bracket {
+  color: #546e7a !important;
+  font-weight: 500 !important;
+}
+
+/* 字段类型不同高亮样式 */
+.field-text {
+  background-color: rgba(24, 144, 255, 0.1) !important;
+  color: #1890ff !important;
+  font-weight: bold !important;
+  border-radius: 3px !important;
+  padding: 0 2px !important;
+}
+
+.field-number {
+  background-color: rgba(250, 140, 22, 0.1) !important;
+  color: #fa8c16 !important;
+  font-weight: bold !important;
+  border-radius: 3px !important;
+  padding: 0 2px !important;
+}
+
+.field-datetime {
+  background-color: rgba(114, 46, 209, 0.1) !important;
+  color: #722ed1 !important;
+  font-weight: bold !important;
+  border-radius: 3px !important;
+  padding: 0 2px !important;
+}
+
+/* 高亮匹配项 */
+.cm-searchMatch {
+  background-color: rgba(255, 213, 0, 0.3) !important;
+  border-radius: 2px !important;
+}
+
+.cm-searchMatch-selected {
+  background-color: rgba(255, 213, 0, 0.6) !important;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
+}
