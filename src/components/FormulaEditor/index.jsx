@@ -22,6 +22,7 @@ import {
   QuestionCircleOutlined,
   ExclamationCircleOutlined,
   CheckCircleOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
 import {
   EditorView,
@@ -64,6 +65,15 @@ const createFieldNameMapping = (fields) => {
   return mapping;
 };
 
+// 创建逆向字段映射对象(英文到中文)
+const createReverseFieldNameMapping = (fields) => {
+  const mapping = {};
+  fields.forEach((field) => {
+    mapping[field.mapping] = field.name;
+  });
+  return mapping;
+};
+
 // 公式编辑器组件
 const FormulaEditor = ({
   height = '600px',
@@ -76,6 +86,8 @@ const FormulaEditor = ({
   // 从传入的字段列表获取所有字段名和映射
   const fieldNames = getFieldNames(fields);
   const fieldNameMapping = createFieldNameMapping(fields);
+  const reverseFieldNameMapping = createReverseFieldNameMapping(fields);
+
   // 根据字段类型获取CSS类名
   const getFieldClassName = (fieldName) => {
     const field = fields.find((f) => f.name === fieldName);
@@ -116,13 +128,12 @@ const FormulaEditor = ({
   const [error, setError] = useState(null);
   const [messageApi, contextHolder] = message.useMessage();
 
+  // 验证结果状态
+  const [validationResult, setValidationResult] = useState(null);
+
   // 弹窗状态
   const [functionDetailVisible, setFunctionDetailVisible] = useState(false);
-  const [testResultVisible, setTestResultVisible] = useState(false);
-  const [testResultData, setTestResultData] = useState(null);
-  // 新增: 翻译弹窗状态
-  const [translatedFormulaVisible, setTranslatedFormulaVisible] = useState(false);
-  const [translatedFormula, setTranslatedFormula] = useState('');
+  const [translationVisible, setTranslationVisible] = useState(false);
 
   // CodeMirror 编辑器引用
   const editorRef = useRef(null);
@@ -200,6 +211,7 @@ const FormulaEditor = ({
             // 更新公式状态
             setFormula(update.state.doc.toString());
             setError(null);
+            setValidationResult(null);
           }
         }
       },
@@ -230,6 +242,7 @@ const FormulaEditor = ({
             if (update.docChanged) {
               setFormula(update.state.doc.toString());
               setError(null);
+              setValidationResult(null);
             }
           }),
           EditorView.theme({
@@ -286,7 +299,7 @@ const FormulaEditor = ({
   // 初始化 CodeMirror - 示例公式编辑器
   useEffect(() => {
     if (exampleEditorRef.current && !exampleCmViewRef.current) {
-      // 修复 #1: 显示英文字段名而不是中文
+      // 示例公式使用英文字段名
       const updatedExampleFormula = 'ADD(count, age)';
 
       const exampleState = EditorState.create({
@@ -357,49 +370,48 @@ const FormulaEditor = ({
     }
   });
 
-  // 修复 #4: 改进插入字段到公式的逻辑，确保正确添加逗号
+  // 更简单、更可靠的插入字段逻辑
   const insertField = (fieldName) => {
     if (cmViewRef.current) {
       const pos = cmViewRef.current.state.selection.main.head;
       const doc = cmViewRef.current.state.doc.toString();
+
+      // 获取光标前的文本
       const beforeCursor = doc.substring(0, pos);
+
+      // 简化逻辑：查找最后一个未关闭的左括号
+      const lastOpenParenPos = beforeCursor.lastIndexOf('(');
+      const lastCloseParenPos = beforeCursor.lastIndexOf(')');
 
       let insert = fieldName;
 
-      // 检查光标是否在函数调用内部（在左括号之后）
-      const lastOpenParen = beforeCursor.lastIndexOf('(');
-      if (lastOpenParen !== -1) {
-        // 我们在函数调用内部
-        const afterOpenParen = beforeCursor.substring(lastOpenParen + 1).trim();
+      // 如果光标在函数括号内
+      if (lastOpenParenPos > lastCloseParenPos) {
+        // 获取括号后的内容
+        const afterParen = beforeCursor.substring(lastOpenParenPos + 1).trim();
 
-        if (afterOpenParen === '') {
-          // 光标就在左括号之后，不需要添加逗号
+        if (afterParen === '') {
+          // 括号内是空的，直接插入字段
           insert = fieldName;
         } else {
-          // 光标在函数调用中的内容之后
-          const lastComma = beforeCursor.lastIndexOf(',');
+          // 检查最后一个非空字符是否是逗号
+          const lastNonSpaceChar = afterParen.trim().slice(-1);
 
-          if (lastComma > lastOpenParen) {
-            // 最后一个左括号后有逗号
-            const afterLastComma = beforeCursor.substring(lastComma + 1).trim();
-
-            if (afterLastComma === '') {
-              // 光标就在逗号和空格之后，不需要添加另一个逗号
-              insert = ' ' + fieldName;
-            } else {
-              // 在新字段前添加逗号
-              insert = ', ' + fieldName;
-            }
+          if (lastNonSpaceChar === ',') {
+            // 最后是逗号，添加空格和字段
+            insert = ' ' + fieldName;
           } else {
-            // 最后一个左括号后没有逗号，添加一个
+            // 最后不是逗号，添加逗号、空格和字段
             insert = ', ' + fieldName;
           }
         }
       }
 
+      // 执行插入
       cmViewRef.current.dispatch({
         changes: { from: pos, insert: insert },
       });
+
       cmViewRef.current.focus();
       messageApi.success(`已添加: ${fieldName}`);
     }
@@ -435,8 +447,8 @@ const FormulaEditor = ({
     }
   };
 
-  // 解析并翻译公式
-  const translateFormula = (formula) => {
+  // 解析并翻译公式（中文到英文）
+  const translateFormulaToEnglish = (formula) => {
     let translated = formula;
 
     // 替换所有已知字段名，确保只替换完整的字段名（不是其他单词的一部分）
@@ -522,10 +534,19 @@ const FormulaEditor = ({
         }
       }
 
-      // 翻译公式并显示弹窗
-      const translatedText = translateFormula(formulaText);
-      setTranslatedFormula(translatedText);
-      setTranslatedFormulaVisible(true);
+      // 验证通过，生成中英文版本
+      const chineseVersion = formulaText;
+      const englishVersion = translateFormulaToEnglish(formulaText);
+
+      // 设置验证结果
+      setValidationResult({
+        isValid: true,
+        chineseVersion,
+        englishVersion,
+      });
+
+      // 显示翻译结果弹窗
+      setTranslationVisible(true);
 
       setError(null);
       return true;
@@ -566,6 +587,14 @@ const FormulaEditor = ({
           size="small"
           dataSource={filteredFields}
           renderItem={renderFieldItem}
+          locale={{
+            emptyText: (
+              <Empty
+                description="没有找到匹配的字段"
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            ),
+          }}
         />
       </div>
     );
@@ -577,6 +606,12 @@ const FormulaEditor = ({
       <Collapse
         defaultActiveKey={['基础运算', '逻辑函数']}
         ghost
+        expandIcon={({ isActive }) => (
+          <RightOutlined
+            rotate={isActive ? 90 : 0}
+            style={{ fontSize: '12px' }}
+          />
+        )}
       >
         {Object.keys(filteredFunctionGroups).map((group) => (
           <Panel
@@ -609,22 +644,6 @@ const FormulaEditor = ({
     flexDirection: 'column',
   };
 
-  const editorSectionStyle = {
-    flex: '0 0 auto', // 固定高度
-  };
-
-  const panelsSectionStyle = {
-    flex: '1 1 auto', // 自动填充剩余空间
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-  };
-
-  const panelsLayoutStyle = {
-    flex: '1 1 auto',
-    overflow: 'hidden',
-  };
-
   return (
     <>
       {contextHolder}
@@ -636,11 +655,8 @@ const FormulaEditor = ({
           className="formula-content"
           style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
         >
-          <div
-            className="formula-section"
-            style={editorSectionStyle}
-          >
-            <div className="formula-label">公式 =</div>
+          <div className="formula-section">
+            <div className="formula-label">公式编辑</div>
             <div className="editor-wrapper">
               <div
                 className="editor-container"
@@ -653,38 +669,29 @@ const FormulaEditor = ({
               )}
             </div>
 
-            <Space>
+            <div className="validate-button">
               <Button
                 type="primary"
-                ghost
                 icon={<CodeOutlined />}
                 onClick={validateFormula}
               >
                 验证公式
               </Button>
-            </Space>
+            </div>
           </div>
 
-          {/* 修复 #3: 优化面板布局 */}
-          <div
-            className="panels-section"
-            style={panelsSectionStyle}
-          >
-            <Layout
-              className="panels-layout"
-              style={panelsLayoutStyle}
-            >
-              {/* 调整宽度并增加右侧内边距 */}
+          {/* 面板布局 */}
+          <div className="panels-section">
+            <Layout className="panels-layout">
+              {/* 左侧字段面板 */}
               <Sider
                 width={240}
                 className="left-sider"
-                style={{ paddingRight: '8px' }}
               >
                 <Card
                   title="表单字段"
                   bordered={false}
                   className="panel-card"
-                  style={{ height: '100%' }}
                 >
                   <Input
                     placeholder="搜索字段"
@@ -692,26 +699,18 @@ const FormulaEditor = ({
                     value={searchFieldTerm}
                     onChange={(e) => setSearchFieldTerm(e.target.value)}
                     className="search-input"
+                    allowClear
                   />
-                  <div
-                    className="panel-content"
-                    style={{ overflow: 'auto' }}
-                  >
-                    {renderFieldGroups()}
-                  </div>
+                  <div className="panel-content">{renderFieldGroups()}</div>
                 </Card>
               </Sider>
 
-              {/* 增加水平内边距 */}
-              <Content
-                className="middle-content"
-                style={{ paddingLeft: '8px', paddingRight: '8px' }}
-              >
+              {/* 中间函数面板 */}
+              <Content className="middle-content">
                 <Card
                   title="函数列表"
                   bordered={false}
                   className="panel-card"
-                  style={{ height: '100%' }}
                 >
                   <Input
                     placeholder="搜索函数"
@@ -719,32 +718,32 @@ const FormulaEditor = ({
                     value={searchFuncTerm}
                     onChange={(e) => setSearchFuncTerm(e.target.value)}
                     className="search-input"
+                    allowClear
                   />
-                  <div
-                    className="panel-content"
-                    style={{ overflow: 'auto' }}
-                  >
+                  <div className="panel-content">
                     {Object.keys(filteredFunctionGroups).length > 0 ? (
                       renderFunctionGroups()
                     ) : (
-                      <Empty description="没有找到匹配的函数" />
+                      <Empty
+                        description="没有找到匹配的函数"
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      />
                     )}
                   </div>
                 </Card>
               </Content>
 
-              {/* 增加宽度 */}
-              <Sider width={300}>
+              {/* 右侧说明面板 */}
+              <Sider
+                width={300}
+                className="right-sider"
+              >
                 <Card
                   title="函数说明"
                   className="panel-card"
                   bordered={false}
-                  style={{ height: '100%' }}
                 >
-                  <div
-                    className="panel-content"
-                    style={{ overflow: 'auto' }}
-                  >
+                  <div className="panel-content">
                     {selectedFunction ? (
                       <div className="function-doc">
                         <Title level={5}>{selectedFunction.name}</Title>
@@ -758,11 +757,14 @@ const FormulaEditor = ({
                           icon={<QuestionCircleOutlined />}
                           onClick={showFunctionDetail}
                         >
-                          了解详情
+                          查看详情
                         </Button>
                       </div>
                     ) : (
-                      <Empty description="请从左侧选择一个函数以查看详细信息" />
+                      <Empty
+                        description="请从左侧选择一个函数以查看详细信息"
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      />
                     )}
                   </div>
                 </Card>
@@ -786,9 +788,10 @@ const FormulaEditor = ({
           </Button>,
         ]}
         width={700}
+        className="function-detail-modal"
       >
         {selectedFunction && (
-          <div className="function-detail-modal">
+          <div className="function-detail-content">
             <Paragraph>{selectedFunction.details}</Paragraph>
 
             <Divider orientation="left">语法</Divider>
@@ -815,6 +818,7 @@ const FormulaEditor = ({
                 ]}
                 pagination={false}
                 size="small"
+                bordered
               />
             ) : (
               <Paragraph>此函数没有参数</Paragraph>
@@ -837,50 +841,51 @@ const FormulaEditor = ({
         )}
       </Modal>
 
-      {/* 公式翻译弹窗 */}
+      {/* 验证结果/翻译弹窗 */}
       <Modal
-        title="公式验证通过"
-        open={translatedFormulaVisible}
-        onCancel={() => setTranslatedFormulaVisible(false)}
+        title="公式验证结果"
+        open={translationVisible}
+        onCancel={() => setTranslationVisible(false)}
         footer={[
           <Button
             key="close"
             type="primary"
-            onClick={() => setTranslatedFormulaVisible(false)}
+            onClick={() => setTranslationVisible(false)}
           >
             确认
           </Button>,
         ]}
+        width={600}
       >
-        <div style={{ padding: '20px 0' }}>
-          <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center' }}>
-            <CheckCircleOutlined
-              style={{ color: '#52c41a', fontSize: '22px', marginRight: '10px' }}
-            />
-            <Text
-              strong
-              style={{ fontSize: '16px' }}
-            >
-              公式格式正确
-            </Text>
-          </div>
+        {validationResult && (
+          <div className="translation-result">
+            <div className="translation-header">
+              <CheckCircleOutlined className="translation-success-icon" />
+              <Text
+                strong
+                style={{ fontSize: '16px' }}
+              >
+                公式格式正确
+              </Text>
+            </div>
 
-          <Divider />
+            <Divider />
 
-          <div style={{ marginBottom: '10px' }}>
-            <Text type="secondary">原始公式:</Text>
-            <div className="formula-code">
-              <Text code>{formula}</Text>
+            <div style={{ marginBottom: '24px' }}>
+              <Title level={5}>中文格式:</Title>
+              <div className="formula-code chinese-formula">
+                <Text code>{validationResult.chineseVersion}</Text>
+              </div>
+            </div>
+
+            <div>
+              <Title level={5}>英文格式:</Title>
+              <div className="formula-code english-formula">
+                <Text code>{validationResult.englishVersion}</Text>
+              </div>
             </div>
           </div>
-
-          <div>
-            <Text type="secondary">翻译后:</Text>
-            <div className="formula-code">
-              <Text code>{translatedFormula}</Text>
-            </div>
-          </div>
-        </div>
+        )}
       </Modal>
     </>
   );
