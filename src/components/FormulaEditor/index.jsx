@@ -687,7 +687,7 @@ const FormulaEditor = ({
                   style={{ height: '100%' }}
                 >
                   <Input
-                    placeholder="搜索字段..."
+                    placeholder="搜索字段"
                     prefix={<SearchOutlined />}
                     value={searchFieldTerm}
                     onChange={(e) => setSearchFieldTerm(e.target.value)}
@@ -714,7 +714,7 @@ const FormulaEditor = ({
                   style={{ height: '100%' }}
                 >
                   <Input
-                    placeholder="搜索函数..."
+                    placeholder="搜索函数"
                     prefix={<SearchOutlined />}
                     value={searchFuncTerm}
                     onChange={(e) => setSearchFuncTerm(e.target.value)}
@@ -734,10 +734,7 @@ const FormulaEditor = ({
               </Content>
 
               {/* 增加宽度 */}
-              <Sider
-                width={300}
-                style={{ paddingLeft: '8px' }}
-              >
+              <Sider width={300}>
                 <Card
                   title="函数说明"
                   className="panel-card"
@@ -771,16 +768,6 @@ const FormulaEditor = ({
                 </Card>
               </Sider>
             </Layout>
-          </div>
-
-          <div
-            className="actions-section"
-            style={{ marginTop: 'auto' }}
-          >
-            <Space>
-              <Button type="primary">确定</Button>
-              <Button>取消</Button>
-            </Space>
           </div>
         </Content>
       </Layout>
