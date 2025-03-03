@@ -4,11 +4,6 @@ export const FIELD_TYPES = {
   TEXT: 'text',
   NUMBER: 'number',
   DATETIME: 'datetime',
-  // 可扩展更多类型...
-  // BOOLEAN: 'boolean',
-  // ENUM: 'enum',
-  // ARRAY: 'array',
-  // OBJECT: 'object',
 };
 
 // ==== 字段类型UI配置 ====
@@ -30,8 +25,7 @@ export const FIELD_TYPE_CONFIGS = {
     bgColor: 'rgba(114, 46, 209, 0.1)',
     icon: 'calendar',
     label: '日期时间',
-  },
-  // 扩展配置...
+  }
 };
 
 // ==== 字段列表 (包含映射信息) ====
@@ -40,16 +34,19 @@ export const FIELDS = [
   { name: '性别', type: FIELD_TYPES.TEXT, mapping: 'gender' },
   { name: '年龄', type: FIELD_TYPES.NUMBER, mapping: 'age' },
   { name: '职业', type: FIELD_TYPES.TEXT, mapping: 'occupation' },
+  { name: '数值', type: FIELD_TYPES.NUMBER, mapping: 'count' },
   { name: '创建时间', type: FIELD_TYPES.DATETIME, mapping: 'createTime' },
-  { name: '个数', type: FIELD_TYPES.NUMBER, mapping: 'count' },
+  { name: '更新时间', type: FIELD_TYPES.DATETIME, mapping: 'updateTime' },
 ];
 
 // ==== 函数分组 ====
 export const FUNCTION_GROUPS = {
   基础运算: ['ADD', 'SUBTRACT', 'MULTIPLY', 'DIVIDE', 'SUM', 'AVERAGE'],
-  逻辑函数: ['IF', 'AND', 'OR', 'NOT', 'ISEMPTY', 'EQ'],
-  文本函数: ['CONCATENATE', 'LEFT', 'RIGHT', 'TRIM'],
-  其他函数: ['LOGINUSER', 'NOW', 'TODAY', 'UPDATE'],
+  // 逻辑函数: ['IF', 'AND', 'OR', 'NOT', 'ISEMPTY', 'EQ'],
+  逻辑函数: ['IF'],
+  // 文本函数: ['CONCATENATE', 'LEFT', 'RIGHT', 'TRIM'],
+  文本函数: ['CONCATENATE'],
+  // 其他函数: ['LOGINUSER', 'NOW', 'TODAY', 'UPDATE'],
 };
 
 // ==== 函数定义 ====
