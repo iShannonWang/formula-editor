@@ -656,7 +656,16 @@ const FormulaEditor = ({
           style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
         >
           <div className="formula-section">
-            <div className="formula-label">公式编辑</div>
+            <div className="formula-header">
+              <div className="formula-label">公式编辑</div>
+              <Button
+                type="primary"
+                icon={<CodeOutlined />}
+                onClick={validateFormula}
+              >
+                验证公式
+              </Button>
+            </div>
             <div className="editor-wrapper">
               <div
                 className="editor-container"
@@ -668,29 +677,18 @@ const FormulaEditor = ({
                 </div>
               )}
             </div>
-
-            <div className="validate-button">
-              <Button
-                type="primary"
-                icon={<CodeOutlined />}
-                onClick={validateFormula}
-              >
-                验证公式
-              </Button>
-            </div>
           </div>
 
-          {/* 面板布局 */}
+          {/* 面板布局 - 均分为三部分(33.3%) */}
           <div className="panels-section">
             <Layout className="panels-layout">
-              {/* 左侧字段面板 */}
+              {/* 左侧字段面板 - 调整为50% */}
               <Sider
-                width={240}
+                width="33.3%"
                 className="left-sider"
               >
                 <Card
-                  title="表单字段"
-                  bordered={false}
+                  title={<Text strong>表单字段</Text>}
                   className="panel-card"
                 >
                   <Input
@@ -705,11 +703,13 @@ const FormulaEditor = ({
                 </Card>
               </Sider>
 
-              {/* 中间函数面板 */}
-              <Content className="middle-content">
+              {/* 中间函数面板 - 调整为25% */}
+              <Content
+                className="middle-content"
+                width="33.3%"
+              >
                 <Card
-                  title="函数列表"
-                  bordered={false}
+                  title={<Text strong>函数列表</Text>}
                   className="panel-card"
                 >
                   <Input
@@ -733,15 +733,14 @@ const FormulaEditor = ({
                 </Card>
               </Content>
 
-              {/* 右侧说明面板 */}
+              {/* 右侧说明面板 - 调整为25% */}
               <Sider
-                width={300}
+                width="33.3%"
                 className="right-sider"
               >
                 <Card
-                  title="函数说明"
+                  title={<Text strong>函数说明</Text>}
                   className="panel-card"
-                  bordered={false}
                 >
                   <div className="panel-content">
                     {selectedFunction ? (
@@ -796,9 +795,7 @@ const FormulaEditor = ({
             <Paragraph>{selectedFunction.details}</Paragraph>
 
             <Divider orientation="left">语法</Divider>
-            <div className="syntax-box">
-              <Text code>{selectedFunction.syntax}</Text>
-            </div>
+            <div className="syntax-box">{selectedFunction.syntax}</div>
 
             <Divider orientation="left">参数说明</Divider>
             {selectedFunction.params && selectedFunction.params.length > 0 ? (
@@ -826,9 +823,7 @@ const FormulaEditor = ({
             )}
 
             <Divider orientation="left">使用示例</Divider>
-            <div className="example-box">
-              <Text code>{selectedFunction.example}</Text>
-            </div>
+            <div className="example-box">{selectedFunction.example}</div>
 
             <Divider orientation="left">注意事项</Divider>
             <Paragraph>
@@ -874,16 +869,12 @@ const FormulaEditor = ({
 
             <div style={{ marginBottom: '24px' }}>
               <Title level={5}>中文格式:</Title>
-              <div className="formula-code chinese-formula">
-                <Text code>{validationResult.chineseVersion}</Text>
-              </div>
+              <div className="formula-code chinese-formula">{validationResult.chineseVersion}</div>
             </div>
 
             <div>
               <Title level={5}>英文格式:</Title>
-              <div className="formula-code english-formula">
-                <Text code>{validationResult.englishVersion}</Text>
-              </div>
+              <div className="formula-code english-formula">{validationResult.englishVersion}</div>
             </div>
           </div>
         )}

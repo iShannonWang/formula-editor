@@ -17,6 +17,12 @@
   flex-direction: column;
 }
 
+.formula-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
 .formula-section {
   background-color: white;
   padding: 24px;
@@ -205,13 +211,6 @@
 .function-doc h5 {
   margin-top: 0;
   color: #1890ff;
-}
-
-/* 验证按钮 */
-.validate-button {
-  margin-top: 16px;
-  display: flex;
-  justify-content: flex-start;
 }
 
 /* 按钮悬停效果 */
