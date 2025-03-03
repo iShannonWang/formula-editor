@@ -76,7 +76,7 @@ const createReverseFieldNameMapping = (fields) => {
 
 // 公式编辑器组件
 const FormulaEditor = ({
-  height = '600px',
+  height = '50vh',
   fields = FIELDS,
   fieldTypes = FIELD_TYPES,
   fieldTypeConfigs = FIELD_TYPE_CONFIGS,

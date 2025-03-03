@@ -20,22 +20,21 @@
 .formula-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
+  align-items: center;
+  margin-bottom: 16px;
 }
 
 .formula-section {
   background-color: white;
-  padding: 24px;
-  border-radius: 8px;
+  padding: 20px;
+  border-radius: 8px 8px 0 0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  margin-bottom: 16px;
   position: relative;
 }
 
 .formula-label {
   font-size: 16px;
   font-weight: 500;
-  margin-bottom: 16px;
   color: #333;
   display: flex;
   align-items: center;
@@ -229,8 +228,8 @@
 
 .function-detail-modal .ant-modal-body {
   padding: 20px 24px;
-  border: 2px dashed #eee;
-  border-radius: 2%;
+  border: 1px dashed #eee;
+  border-radius: 4px;
 }
 
 .syntax-box {
