@@ -356,29 +356,15 @@
   font-weight: 500 !important;
 }
 
-/* 字段类型不同高亮样式 */
-.field-text {
-  background-color: rgba(24, 144, 255, 0.1) !important;
-  color: #1890ff !important;
-  font-weight: bold !important;
-  border-radius: 3px !important;
-  padding: 0 2px !important;
-}
-
-.field-number {
-  background-color: rgba(250, 140, 22, 0.1) !important;
-  color: #fa8c16 !important;
-  font-weight: bold !important;
-  border-radius: 3px !important;
-  padding: 0 2px !important;
-}
-
+/* 修复 #2: 字段类型高亮样式改为深绿色背景白色文字 */
+.field-text,
+.field-number,
 .field-datetime {
-  background-color: rgba(114, 46, 209, 0.1) !important;
-  color: #722ed1 !important;
+  background-color: darkgreen !important;
+  color: white !important;
   font-weight: bold !important;
   border-radius: 3px !important;
-  padding: 0 2px !important;
+  padding: 2px !important;
 }
 
 /* 高亮匹配项 */
