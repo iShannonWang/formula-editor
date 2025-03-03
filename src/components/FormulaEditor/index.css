@@ -230,6 +230,8 @@
 
 .function-detail-modal .ant-modal-body {
   padding: 20px 24px;
+  border: 2px dashed #eee;
+  border-radius: 2%;
 }
 
 .syntax-box {

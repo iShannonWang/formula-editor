@@ -749,9 +749,10 @@ const FormulaEditor = ({
                         <Title level={5}>{selectedFunction.name}</Title>
                         <Paragraph>{selectedFunction.description}</Paragraph>
                         <Divider orientation="left">用法</Divider>
-                        <Paragraph code>{selectedFunction.syntax}</Paragraph>
+                        <div className="syntax-box">{selectedFunction.syntax}</div>
                         <Divider orientation="left">示例</Divider>
-                        <Paragraph>{selectedFunction.example}</Paragraph>
+                        <div className="example-box">{selectedFunction.example}</div>
+
                         <Button
                           type="link"
                           icon={<QuestionCircleOutlined />}
