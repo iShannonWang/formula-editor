@@ -679,9 +679,8 @@ const FormulaEditor = ({
   const translateFormulaToEnglish = (formula) => {
     let translated = formula;
 
-    // 替换所有已知字段名
     Object.keys(fieldNameMapping).forEach((fieldName) => {
-      const regex = new RegExp(`\\b${fieldName}\\b`, 'g');
+      const regex = new RegExp(fieldName, 'g');
       translated = translated.replace(regex, fieldNameMapping[fieldName]);
     });
 
