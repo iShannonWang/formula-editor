@@ -42,6 +42,7 @@ import { javascript } from '@codemirror/lang-javascript';
 import { tags } from '@lezer/highlight';
 import * as math from 'mathjs';
 import './index.css';
+import { calculateFormula } from '../../calculateFormula';
 
 const { Content, Sider } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -1332,6 +1333,8 @@ const FormulaEditor = ({
                   {validationResult.englishVersion}
                 </div>
               </div>
+
+              {calculateFormula(validationResult.englishVersion, { count: 8 })}
 
               {calculationVariables.length > 0 ? (
                 <>

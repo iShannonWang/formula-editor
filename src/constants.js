@@ -43,23 +43,33 @@ export const FIELDS = [
 // ==== 函数分组 ====
 export const FUNCTION_GROUPS = {
   基础运算: ['ADD', 'SUBTRACT', 'MULTIPLY', 'DIVIDE', 'SUM', 'AVERAGE'],
-  // 逻辑函数: ['IF', 'AND', 'OR', 'NOT', 'ISEMPTY', 'EQ'],
-  逻辑函数: ['IF'],
-  // 文本函数: ['CONCATENATE', 'LEFT', 'RIGHT', 'TRIM'],
+  逻辑函数: [
+    // 条件判断
+    'IF',
+    // 逻辑与
+    'AND',
+    // 逻辑或
+    'OR',
+    // 逻辑非
+    'NOT',
+    // 判断是否为空
+    'ISEMPTY',
+    // 判断是否相等
+    'EQ',
+    // 判断是否大于
+    'GT',
+    // 判断是否小于
+    'LT',
+    // 判断是否大于等于
+    'GTE',
+    // 判断是否小于等于
+    'LTE'
+  ],
   文本函数: ['CONCATENATE'],
-  // 其他函数: ['LOGINUSER', 'NOW', 'TODAY', 'UPDATE'],
 };
 
 // ==== 函数定义 ====
 export const FUNCTIONS = {
-  UPDATE: {
-    description: '更新数据库记录',
-    syntax: 'UPDATE(表名)',
-    example: 'UPDATE(存货表)',
-    details:
-      '此函数用于更新数据库中的记录。通常与条件函数搭配使用，例如EQ()。当条件满足时，更新指定表中的记录。',
-    params: [{ name: '表名', description: '要更新的数据表名称' }],
-  },
   ADD: {
     description: '将两个或多个数字相加',
     syntax: 'ADD(number1, number2, ...)',
@@ -195,4 +205,54 @@ export const FUNCTIONS = {
       { name: '...', description: '可选的额外逻辑表达式' },
     ],
   },
+  NOT: {
+    description: '对逻辑值取反',
+    syntax: 'NOT(logical)',
+    example: 'NOT(A1 > 10) 如果A1不大于10则返回true',
+    details: 'NOT函数对传入的逻辑值取反。如果逻辑值为TRUE，则返回FALSE；如果逻辑值为FALSE，则返回TRUE。',
+    params: [
+      { name: 'logical', description: '要取反的逻辑表达式' }
+    ]
+  },
+  GT: {
+    description: '判断第一个值是否大于第二个值',
+    syntax: 'GT(value1, value2)',
+    example: 'GT(A1, B1) 如果A1大于B1则返回true',
+    details: 'GT函数比较两个值，判断第一个值是否大于第二个值。如果是，则返回TRUE；否则返回FALSE。',
+    params: [
+      { name: 'value1', description: '第一个要比较的值' },
+      { name: 'value2', description: '第二个要比较的值' }
+    ]
+  },
+  LT: {
+    description: '判断第一个值是否小于第二个值',
+    syntax: 'LT(value1, value2)',
+    example: 'LT(A1, B1) 如果A1小于B1则返回true',
+    details: 'LT函数比较两个值，判断第一个值是否小于第二个值。如果是，则返回TRUE；否则返回FALSE。',
+    params: [
+      { name: 'value1', description: '第一个要比较的值' },
+      { name: 'value2', description: '第二个要比较的值' }
+    ]
+  },
+  GTE: {
+    description: '判断第一个值是否大于等于第二个值',
+    syntax: 'GTE(value1, value2)',
+    example: 'GTE(A1, B1) 如果A1大于等于B1则返回true',
+    details: 'GTE函数比较两个值，判断第一个值是否大于等于第二个值。如果是，则返回TRUE；否则返回FALSE。',
+    params: [
+      { name: 'value1', description: '第一个要比较的值' },
+      { name: 'value2', description: '第二个要比较的值' }
+    ]
+  },
+  LTE: {
+    description: '判断第一个值是否小于等于第二个值',
+    syntax: 'LTE(value1, value2)',
+    example: 'LTE(A1, B1) 如果A1小于等于B1则返回true',
+    details: 'LTE函数比较两个值，判断第一个值是否小于等于第二个值。如果是，则返回TRUE；否则返回FALSE。',
+    params: [
+      { name: 'value1', description: '第一个要比较的值' },
+      { name: 'value2', description: '第二个要比较的值' }
+    ]
+  },
+
 };
