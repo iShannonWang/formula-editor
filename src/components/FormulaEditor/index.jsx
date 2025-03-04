@@ -15,6 +15,7 @@ import {
   message,
   Modal,
   Table,
+  Dropdown,
 } from 'antd';
 import {
   SearchOutlined,
@@ -32,22 +33,13 @@ import {
   Decoration,
   ViewPlugin,
 } from '@codemirror/view';
-import { EditorState, RangeSet } from '@codemirror/state';
+import { EditorState, RangeSet, StateField, StateEffect } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { indentOnInput, syntaxHighlighting, HighlightStyle } from '@codemirror/language';
 import { javascript } from '@codemirror/lang-javascript';
 import { tags } from '@lezer/highlight';
 import * as math from 'mathjs';
 import './index.css';
-
-// 导入常量配置
-import {
-  FIELD_TYPES,
-  FIELD_TYPE_CONFIGS,
-  FIELDS,
-  FUNCTION_GROUPS,
-  FUNCTIONS,
-} from '../../constants';
 
 const { Header, Content, Sider } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -76,12 +68,12 @@ const createReverseFieldNameMapping = (fields) => {
 
 // 公式编辑器组件
 const FormulaEditor = ({
-  height = '50vh',
-  fields = FIELDS,
-  fieldTypes = FIELD_TYPES,
-  fieldTypeConfigs = FIELD_TYPE_CONFIGS,
-  functionGroups = FUNCTION_GROUPS,
-  functionDefinitions = FUNCTIONS,
+  height = '40vh', // 调整默认高度为40vh，比原来的50vh小
+  fields,
+  fieldTypes,
+  fieldTypeConfigs,
+  functionGroups,
+  functionDefinitions,
 }) => {
   // 从传入的字段列表获取所有字段名和映射
   const fieldNames = getFieldNames(fields);
@@ -107,13 +99,13 @@ const FormulaEditor = ({
   // 自定义语法高亮
   const formulaSyntax = syntaxHighlighting(
     HighlightStyle.define([
-      { tag: tags.keyword, color: '#7c4dff' }, // 关键字 - 深紫色
+      { tag: tags.keyword, color: '#7c4dff', fontWeight: '500' }, // 关键字 - 深紫色
       { tag: tags.string, color: '#29b6f6' }, // 字符串 - 亮蓝色
       { tag: tags.number, color: '#ff9100' }, // 数字 - 橙色
-      { tag: tags.function(tags.variableName), color: '#00c853' }, // 函数 - 绿色
+      { tag: tags.function(tags.variableName), color: '#00c853', fontWeight: '500' }, // 函数 - 绿色
       { tag: tags.operator, color: '#f50057' }, // 运算符 - 粉红色
-      { tag: tags.comment, color: '#757575' }, // 注释 - 灰色
-      { tag: tags.bracket, color: '#546e7a' }, // 括号 - 灰蓝色
+      { tag: tags.comment, color: '#757575', fontStyle: 'italic' }, // 注释 - 灰色
+      { tag: tags.bracket, color: '#546e7a', fontWeight: '500' }, // 括号 - 灰蓝色
       { tag: tags.className, color: '#ec407a' }, // 类名 - 粉红色
       { tag: tags.variableName, color: '#2196f3', fontWeight: 'bold' }, // 变量名 - 高亮蓝色并加粗
       { tag: tags.propertyName, color: '#2196f3', fontWeight: 'bold' }, // 字段名高亮
@@ -128,6 +120,12 @@ const FormulaEditor = ({
   const [error, setError] = useState(null);
   const [messageApi, contextHolder] = message.useMessage();
 
+  // 建议状态
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionType, setSuggestionType] = useState(''); // 'field' or 'function'
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+
   // 验证结果状态
   const [validationResult, setValidationResult] = useState(null);
 
@@ -140,13 +138,25 @@ const FormulaEditor = ({
   const cmViewRef = useRef(null);
   const exampleEditorRef = useRef(null);
   const exampleCmViewRef = useRef(null);
+  const suggestionsRef = useRef(null);
 
-  // 自定义CodeMirror配置 - 添加对变量的识别
+  // 创建所有函数名的列表
+  const allFunctionNames = Object.keys(functionDefinitions);
+
+  // 参考用于定位建议列表的编辑器位置
+  const editorPositionRef = useRef(null);
+
+  // 自定义CodeMirror配置 - 添加对变量的识别和字段名高亮
   const createVariableHighlighter = () => {
     // 创建一个装饰器类来高亮字段名
     const createDecorations = (view) => {
       const decorations = [];
       const text = view.state.doc.toString();
+
+      // 更新编辑器位置引用
+      if (editorRef.current) {
+        editorPositionRef.current = editorRef.current.getBoundingClientRect();
+      }
 
       // 遍历所有字段
       for (const fieldName of fieldNames) {
@@ -154,8 +164,6 @@ const FormulaEditor = ({
 
         // 查找所有匹配项
         while (true) {
-          // 确保不匹配函数名中的字段名，只匹配参数中的字段名
-          // 例如: 如果字段名是"SUM"，不应该匹配函数名"SUM"，只匹配参数中的"SUM"
           const fieldPos = text.indexOf(fieldName, startPos);
           if (fieldPos === -1) break;
 
@@ -191,6 +199,41 @@ const FormulaEditor = ({
         }
       }
 
+      // 增强功能：高亮所有函数名
+      for (const funcName of allFunctionNames) {
+        let startPos = 0;
+
+        // 查找所有匹配项
+        while (true) {
+          const funcPos = text.indexOf(funcName, startPos);
+          if (funcPos === -1) break;
+
+          // 检查后一个字符是否为左括号，确保这是一个函数调用
+          const nextChar =
+            funcPos + funcName.length < text.length ? text[funcPos + funcName.length] : '';
+
+          const isFunctionCall = nextChar === '(';
+
+          if (isFunctionCall) {
+            // 创建装饰器标记
+            const from = funcPos;
+            const to = from + funcName.length;
+
+            decorations.push({
+              from,
+              to,
+              value: Decoration.mark({
+                class: 'cm-function',
+              }),
+            });
+          }
+
+          startPos = funcPos + funcName.length;
+        }
+      }
+
+      // 不再需要存储每个位置的坐标信息
+
       return decorations.length ? RangeSet.of(decorations) : RangeSet.empty;
     };
 
@@ -221,6 +264,91 @@ const FormulaEditor = ({
     );
   };
 
+  // 检查是否应该显示建议
+  const checkForSuggestions = (view) => {
+    const doc = view.state.doc.toString();
+    const cursorPos = view.state.selection.main.head;
+
+    // 获取光标前的字符
+    const textBeforeCursor = doc.substring(0, cursorPos);
+
+    // 检查最后一个字符是否是 @
+    if (textBeforeCursor.endsWith('@')) {
+      // 显示字段建议
+      const filteredFields = fields.filter(
+        (field) =>
+          !searchFieldTerm || field.name.toLowerCase().includes(searchFieldTerm.toLowerCase()),
+      );
+
+      setSuggestions(
+        filteredFields.map((field) => ({
+          id: field.name,
+          name: field.name,
+          type: field.type,
+        })),
+      );
+      setSuggestionType('field');
+      setShowSuggestions(true);
+
+      // 获取准确的光标位置坐标
+      setTimeout(() => {
+        // 延迟获取位置，确保DOM已经更新
+        const coords = view.coordsAtPos(cursorPos);
+        if (coords) {
+          // 获取编辑器容器的位置
+          const editorRect = editorRef.current.getBoundingClientRect();
+          setCursorPosition({
+            x: coords.left - editorRect.left,
+            y: coords.bottom - editorRect.top + 5, // 添加一点偏移以避免遮挡光标
+          });
+        }
+      }, 0);
+
+      return true;
+    }
+
+    // 检查是否在输入函数名
+    const functionMatch = /\b([A-Z]+)$/.exec(textBeforeCursor);
+    if (functionMatch) {
+      const partialFunc = functionMatch[1];
+      // 过滤匹配的函数
+      const matchingFunctions = allFunctionNames.filter((funcName) =>
+        funcName.startsWith(partialFunc),
+      );
+
+      if (matchingFunctions.length > 0) {
+        setSuggestions(
+          matchingFunctions.map((func) => ({
+            id: func,
+            name: func,
+            description: functionDefinitions[func]?.description || '',
+          })),
+        );
+        setSuggestionType('function');
+        setShowSuggestions(true);
+
+        // 获取准确的光标位置坐标
+        setTimeout(() => {
+          // 延迟获取位置，确保DOM已经更新
+          const coords = view.coordsAtPos(cursorPos);
+          if (coords && editorRef.current) {
+            const editorRect = editorRef.current.getBoundingClientRect();
+            setCursorPosition({
+              x: coords.left - editorRect.left,
+              y: coords.bottom - editorRect.top + 5, // 添加一点偏移以避免遮挡光标
+            });
+          }
+        }, 0);
+
+        return true;
+      }
+    }
+
+    // 如果不满足任何条件，隐藏建议
+    setShowSuggestions(false);
+    return false;
+  };
+
   // 初始化 CodeMirror - 主编辑器
   useEffect(() => {
     if (editorRef.current && !cmViewRef.current) {
@@ -243,7 +371,57 @@ const FormulaEditor = ({
               setFormula(update.state.doc.toString());
               setError(null);
               setValidationResult(null);
+
+              // 检查是否应该显示建议
+              checkForSuggestions(update.view);
             }
+          }),
+          EditorView.domEventHandlers({
+            keydown: (event, view) => {
+              if (showSuggestions) {
+                // 如果按下了方向键、Enter或Esc，处理建议框导航
+                if (
+                  event.key === 'ArrowDown' ||
+                  event.key === 'ArrowUp' ||
+                  event.key === 'Enter' ||
+                  event.key === 'Escape'
+                ) {
+                  event.preventDefault();
+
+                  if (event.key === 'Escape') {
+                    setShowSuggestions(false);
+                  } else if (event.key === 'Enter' && suggestionsRef.current?.selectedIndex >= 0) {
+                    // 插入选中的建议
+                    const selected = suggestions[suggestionsRef.current.selectedIndex];
+                    insertSuggestion(selected);
+                  } else {
+                    // 更新选中项
+                    if (!suggestionsRef.current) {
+                      suggestionsRef.current = { selectedIndex: 0 };
+                    } else {
+                      if (event.key === 'ArrowDown') {
+                        suggestionsRef.current.selectedIndex =
+                          (suggestionsRef.current.selectedIndex + 1) % suggestions.length;
+                      } else if (event.key === 'ArrowUp') {
+                        suggestionsRef.current.selectedIndex =
+                          (suggestionsRef.current.selectedIndex - 1 + suggestions.length) %
+                          suggestions.length;
+                      }
+                    }
+                    // 强制更新UI
+                    setSuggestions([...suggestions]);
+                  }
+                  return true;
+                }
+              }
+
+              return false;
+            },
+            click: () => {
+              // 点击编辑器其他地方时隐藏建议
+              setShowSuggestions(false);
+              return false;
+            },
           }),
           EditorView.theme({
             '&': {
@@ -277,6 +455,33 @@ const FormulaEditor = ({
             '.cm-variableName': {
               color: '#2196f3',
               fontWeight: 'bold',
+            },
+            // 函数高亮
+            '.cm-function': {
+              color: '#00c853',
+              fontWeight: 'bold',
+            },
+            // 字段类型高亮
+            '.field-text': {
+              backgroundColor: '#0050b3 !important',
+              color: 'white !important',
+              fontWeight: 'bold !important',
+              borderRadius: '3px !important',
+              padding: '2px 4px !important',
+            },
+            '.field-number': {
+              backgroundColor: '#ad4e00 !important',
+              color: 'white !important',
+              fontWeight: 'bold !important',
+              borderRadius: '3px !important',
+              padding: '2px 4px !important',
+            },
+            '.field-datetime': {
+              backgroundColor: '#531dab !important',
+              color: 'white !important',
+              fontWeight: 'bold !important',
+              borderRadius: '3px !important',
+              padding: '2px 4px !important',
             },
           }),
         ],
@@ -353,6 +558,51 @@ const FormulaEditor = ({
       };
     }
   }, [exampleEditorRef.current]);
+
+  // 插入选中的建议
+  const insertSuggestion = (suggestion) => {
+    if (cmViewRef.current) {
+      const doc = cmViewRef.current.state.doc.toString();
+      const cursorPos = cmViewRef.current.state.selection.main.head;
+      const textBeforeCursor = doc.substring(0, cursorPos);
+
+      let from, insert;
+
+      if (suggestionType === 'field') {
+        // 对于字段，处理 @ 字符之后的插入
+        from = textBeforeCursor.lastIndexOf('@');
+        if (from !== -1) {
+          // 替换 @ 为选中的字段名
+          insert = suggestion.name;
+        }
+      } else if (suggestionType === 'function') {
+        // 对于函数，处理部分输入的函数名
+        const funcMatch = /\b([A-Z]+)$/.exec(textBeforeCursor);
+        if (funcMatch) {
+          from = cursorPos - funcMatch[1].length;
+          insert = suggestion.name + '()';
+        }
+      }
+
+      if (from !== undefined && insert !== undefined) {
+        cmViewRef.current.dispatch({
+          changes: { from, to: cursorPos, insert },
+        });
+
+        // 如果插入的是函数，将光标定位到括号内
+        if (suggestionType === 'function') {
+          const newCursorPos = from + suggestion.name.length + 1;
+          cmViewRef.current.dispatch({
+            selection: { anchor: newCursorPos },
+          });
+        }
+
+        cmViewRef.current.focus();
+        setShowSuggestions(false);
+        messageApi.success(`已添加: ${suggestion.name}`);
+      }
+    }
+  };
 
   // 过滤字段
   const filteredFields = fields.filter((field) =>
@@ -637,11 +887,67 @@ const FormulaEditor = ({
     );
   };
 
+  // 渲染建议列表
+  const renderSuggestionsList = () => {
+    if (!showSuggestions || suggestions.length === 0) return null;
+
+    return (
+      <div
+        className="suggestions-container"
+        style={{
+          position: 'absolute',
+          left: `${cursorPosition.x}px`,
+          top: `${cursorPosition.y}px`,
+          zIndex: 1000,
+          backgroundColor: 'white',
+          border: '1px solid #d9d9d9',
+          borderRadius: '4px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+          maxHeight: '200px',
+          overflow: 'auto',
+          width: '250px',
+        }}
+      >
+        <List
+          size="small"
+          dataSource={suggestions}
+          renderItem={(item, index) => (
+            <List.Item
+              className={`suggestion-item ${
+                suggestionsRef.current?.selectedIndex === index ? 'suggestion-item-selected' : ''
+              }`}
+              onClick={() => insertSuggestion(item)}
+              style={{
+                cursor: 'pointer',
+                padding: '8px 12px',
+                backgroundColor:
+                  suggestionsRef.current?.selectedIndex === index ? '#e6f7ff' : 'transparent',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                <span>{item.name}</span>
+                {suggestionType === 'field' && (
+                  <Tag color={getTypeColor(item.type)}>{item.type}</Tag>
+                )}
+              </div>
+              {suggestionType === 'function' && item.description && (
+                <div style={{ fontSize: '12px', color: '#8c8c8c', marginTop: '4px' }}>
+                  {item.description}
+                </div>
+              )}
+            </List.Item>
+          )}
+        />
+      </div>
+    );
+  };
+
   // 组件样式，根据传入的高度自适应
   const containerStyle = {
     height: height,
     display: 'flex',
     flexDirection: 'column',
+    minHeight: '400px', // 设置最小高度，确保布局正常
   };
 
   return (
@@ -658,19 +964,26 @@ const FormulaEditor = ({
           <div className="formula-section">
             <div className="formula-header">
               <div className="formula-label">公式编辑</div>
-              <Button
-                type="primary"
-                icon={<CodeOutlined />}
-                onClick={validateFormula}
-              >
-                验证公式
-              </Button>
+              <Space>
+                <Button
+                  type="primary"
+                  icon={<CodeOutlined />}
+                  onClick={validateFormula}
+                >
+                  验证公式
+                </Button>
+              </Space>
             </div>
-            <div className="editor-wrapper">
+            <div
+              className="editor-wrapper"
+              style={{ position: 'relative' }}
+            >
               <div
                 className="editor-container"
                 ref={editorRef}
+                style={{ position: 'relative' }}
               ></div>
+              {renderSuggestionsList()}
               {error && (
                 <div className="error-message">
                   <ExclamationCircleOutlined /> {error}
@@ -679,10 +992,10 @@ const FormulaEditor = ({
             </div>
           </div>
 
-          {/* 面板布局 - 均分为三部分(33.3%) */}
+          {/* 面板布局 - 三等分 */}
           <div className="panels-section">
             <Layout className="panels-layout">
-              {/* 左侧字段面板 - 调整为50% */}
+              {/* 左侧字段面板 */}
               <Sider
                 width="33.3%"
                 className="left-sider"
@@ -703,7 +1016,7 @@ const FormulaEditor = ({
                 </Card>
               </Sider>
 
-              {/* 中间函数面板 - 调整为25% */}
+              {/* 中间函数面板 */}
               <Content
                 className="middle-content"
                 width="33.3%"
@@ -733,7 +1046,7 @@ const FormulaEditor = ({
                 </Card>
               </Content>
 
-              {/* 右侧说明面板 - 调整为25% */}
+              {/* 右侧说明面板 */}
               <Sider
                 width="33.3%"
                 className="right-sider"
