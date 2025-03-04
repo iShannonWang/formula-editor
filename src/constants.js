@@ -35,6 +35,7 @@ export const FIELDS = [
   { name: '年龄', type: FIELD_TYPES.NUMBER, mapping: 'age' },
   { name: '职业', type: FIELD_TYPES.TEXT, mapping: 'occupation' },
   { name: '数值', type: FIELD_TYPES.NUMBER, mapping: 'count' },
+  { name: '项目数量', type: FIELD_TYPES.NUMBER, mapping: 'projectCount' },
   { name: '创建时间', type: FIELD_TYPES.DATETIME, mapping: 'createTime' },
   { name: '更新时间', type: FIELD_TYPES.DATETIME, mapping: 'updateTime' },
 ];

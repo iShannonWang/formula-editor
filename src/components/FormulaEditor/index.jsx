@@ -15,7 +15,8 @@ import {
   message,
   Modal,
   Table,
-  Dropdown,
+  Form,
+  InputNumber,
 } from 'antd';
 import {
   SearchOutlined,
@@ -24,6 +25,7 @@ import {
   ExclamationCircleOutlined,
   CheckCircleOutlined,
   RightOutlined,
+  CalculatorOutlined,
 } from '@ant-design/icons';
 import {
   EditorView,
@@ -33,7 +35,7 @@ import {
   Decoration,
   ViewPlugin,
 } from '@codemirror/view';
-import { EditorState, RangeSet, StateField, StateEffect } from '@codemirror/state';
+import { EditorState, RangeSet } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { indentOnInput, syntaxHighlighting, HighlightStyle } from '@codemirror/language';
 import { javascript } from '@codemirror/lang-javascript';
@@ -41,14 +43,14 @@ import { tags } from '@lezer/highlight';
 import * as math from 'mathjs';
 import './index.css';
 
-const { Header, Content, Sider } = Layout;
+const { Content, Sider } = Layout;
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
 
-// 自定义语法高亮类型和字段名
+// 获取字段名列表
 const getFieldNames = (fields) => fields.map((field) => field.name);
 
-// 创建字段映射对象
+// 创建字段映射对象（中文 -> 英文）
 const createFieldNameMapping = (fields) => {
   const mapping = {};
   fields.forEach((field) => {
@@ -57,7 +59,7 @@ const createFieldNameMapping = (fields) => {
   return mapping;
 };
 
-// 创建逆向字段映射对象(英文到中文)
+// 创建逆向字段映射对象（英文 -> 中文）
 const createReverseFieldNameMapping = (fields) => {
   const mapping = {};
   fields.forEach((field) => {
@@ -68,22 +70,22 @@ const createReverseFieldNameMapping = (fields) => {
 
 // 公式编辑器组件
 const FormulaEditor = ({
-  height = '40vh', // 调整默认高度为40vh，比原来的50vh小
+  height = '40vh',
   fields,
   fieldTypes,
   fieldTypeConfigs,
   functionGroups,
   functionDefinitions,
 }) => {
-  // 从传入的字段列表获取所有字段名和映射
+  // 获取字段名和映射
   const fieldNames = getFieldNames(fields);
   const fieldNameMapping = createFieldNameMapping(fields);
   const reverseFieldNameMapping = createReverseFieldNameMapping(fields);
 
-  // 根据字段类型获取CSS类名
+  // 获取字段类名
   const getFieldClassName = (fieldName) => {
     const field = fields.find((f) => f.name === fieldName);
-    if (!field) return 'field-text'; // 默认文本类型
+    if (!field) return 'field-text';
 
     switch (field.type) {
       case fieldTypes.NUMBER:
@@ -99,20 +101,20 @@ const FormulaEditor = ({
   // 自定义语法高亮
   const formulaSyntax = syntaxHighlighting(
     HighlightStyle.define([
-      { tag: tags.keyword, color: '#7c4dff', fontWeight: '500' }, // 关键字 - 深紫色
-      { tag: tags.string, color: '#29b6f6' }, // 字符串 - 亮蓝色
-      { tag: tags.number, color: '#ff9100' }, // 数字 - 橙色
-      { tag: tags.function(tags.variableName), color: '#00c853', fontWeight: '500' }, // 函数 - 绿色
-      { tag: tags.operator, color: '#f50057' }, // 运算符 - 粉红色
-      { tag: tags.comment, color: '#757575', fontStyle: 'italic' }, // 注释 - 灰色
-      { tag: tags.bracket, color: '#546e7a', fontWeight: '500' }, // 括号 - 灰蓝色
-      { tag: tags.className, color: '#ec407a' }, // 类名 - 粉红色
-      { tag: tags.variableName, color: '#2196f3', fontWeight: 'bold' }, // 变量名 - 高亮蓝色并加粗
-      { tag: tags.propertyName, color: '#2196f3', fontWeight: 'bold' }, // 字段名高亮
+      { tag: tags.keyword, color: '#7c4dff', fontWeight: '500' },
+      { tag: tags.string, color: '#29b6f6' },
+      { tag: tags.number, color: '#ff9100' },
+      { tag: tags.function(tags.variableName), color: '#00c853', fontWeight: '500' },
+      { tag: tags.operator, color: '#f50057' },
+      { tag: tags.comment, color: '#757575', fontStyle: 'italic' },
+      { tag: tags.bracket, color: '#546e7a', fontWeight: '500' },
+      { tag: tags.className, color: '#ec407a' },
+      { tag: tags.variableName, color: '#2196f3', fontWeight: 'bold' },
+      { tag: tags.propertyName, color: '#2196f3', fontWeight: 'bold' },
     ]),
   );
 
-  // 状态定义
+  // 状态管理
   const [formula, setFormula] = useState('');
   const [searchFieldTerm, setSearchFieldTerm] = useState('');
   const [searchFuncTerm, setSearchFuncTerm] = useState('');
@@ -120,49 +122,41 @@ const FormulaEditor = ({
   const [error, setError] = useState(null);
   const [messageApi, contextHolder] = message.useMessage();
 
-  // 建议状态
+  // 建议相关状态
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [suggestionType, setSuggestionType] = useState(''); // 'field' or 'function'
+  const [suggestionType, setSuggestionType] = useState('');
   const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
 
-  // 验证结果状态
+  // 验证结果和计算相关状态
   const [validationResult, setValidationResult] = useState(null);
+  const [calculationVisible, setCalculationVisible] = useState(false);
+  const [calculationVariables, setCalculationVariables] = useState([]);
+  const [calculationResult, setCalculationResult] = useState(null);
+  const [calculationForm] = Form.useForm();
 
-  // 弹窗状态
+  // 函数详情弹窗状态
   const [functionDetailVisible, setFunctionDetailVisible] = useState(false);
-  const [translationVisible, setTranslationVisible] = useState(false);
 
-  // CodeMirror 编辑器引用
+  // 引用
   const editorRef = useRef(null);
   const cmViewRef = useRef(null);
   const exampleEditorRef = useRef(null);
   const exampleCmViewRef = useRef(null);
   const suggestionsRef = useRef(null);
 
-  // 创建所有函数名的列表
+  // 函数名列表
   const allFunctionNames = Object.keys(functionDefinitions);
 
-  // 参考用于定位建议列表的编辑器位置
-  const editorPositionRef = useRef(null);
-
-  // 自定义CodeMirror配置 - 添加对变量的识别和字段名高亮
+  // 自定义CodeMirror配置 - 处理字段和函数高亮
   const createVariableHighlighter = () => {
-    // 创建一个装饰器类来高亮字段名
     const createDecorations = (view) => {
       const decorations = [];
       const text = view.state.doc.toString();
 
-      // 更新编辑器位置引用
-      if (editorRef.current) {
-        editorPositionRef.current = editorRef.current.getBoundingClientRect();
-      }
-
-      // 遍历所有字段
+      // 高亮字段名
       for (const fieldName of fieldNames) {
         let startPos = 0;
-
-        // 查找所有匹配项
         while (true) {
           const fieldPos = text.indexOf(fieldName, startPos);
           if (fieldPos === -1) break;
@@ -172,17 +166,10 @@ const FormulaEditor = ({
           const nextChar =
             fieldPos + fieldName.length < text.length ? text[fieldPos + fieldName.length] : '';
 
-          const isFieldName =
-            // 确保前面不是字母或数字
-            !/[a-zA-Z0-9_\]]/.test(prevChar) &&
-            // 确保后面不是字母或数字
-            !/[a-zA-Z0-9_\[]/.test(nextChar);
+          const isFieldName = !/[a-zA-Z0-9_\]]/.test(prevChar) && !/[a-zA-Z0-9_\[]/.test(nextChar);
 
           if (isFieldName) {
-            // 获取字段类型对应的CSS类名
             const fieldClass = getFieldClassName(fieldName);
-
-            // 创建装饰器标记
             const from = fieldPos;
             const to = from + fieldName.length;
 
@@ -199,11 +186,9 @@ const FormulaEditor = ({
         }
       }
 
-      // 增强功能：高亮所有函数名
+      // 高亮函数名
       for (const funcName of allFunctionNames) {
         let startPos = 0;
-
-        // 查找所有匹配项
         while (true) {
           const funcPos = text.indexOf(funcName, startPos);
           if (funcPos === -1) break;
@@ -215,7 +200,6 @@ const FormulaEditor = ({
           const isFunctionCall = nextChar === '(';
 
           if (isFunctionCall) {
-            // 创建装饰器标记
             const from = funcPos;
             const to = from + funcName.length;
 
@@ -232,12 +216,9 @@ const FormulaEditor = ({
         }
       }
 
-      // 不再需要存储每个位置的坐标信息
-
       return decorations.length ? RangeSet.of(decorations) : RangeSet.empty;
     };
 
-    // 创建视图插件
     return ViewPlugin.fromClass(
       class {
         decorations = RangeSet.empty;
@@ -248,10 +229,7 @@ const FormulaEditor = ({
 
         update(update) {
           if (update.docChanged) {
-            // 文档变化时更新装饰器
             this.decorations = createDecorations(update.view);
-
-            // 更新公式状态
             setFormula(update.state.doc.toString());
             setError(null);
             setValidationResult(null);
@@ -268,13 +246,10 @@ const FormulaEditor = ({
   const checkForSuggestions = (view) => {
     const doc = view.state.doc.toString();
     const cursorPos = view.state.selection.main.head;
-
-    // 获取光标前的字符
     const textBeforeCursor = doc.substring(0, cursorPos);
 
-    // 检查最后一个字符是否是 @
+    // 检查 @ 符号（字段建议）
     if (textBeforeCursor.endsWith('@')) {
-      // 显示字段建议
       const filteredFields = fields.filter(
         (field) =>
           !searchFieldTerm || field.name.toLowerCase().includes(searchFieldTerm.toLowerCase()),
@@ -290,16 +265,13 @@ const FormulaEditor = ({
       setSuggestionType('field');
       setShowSuggestions(true);
 
-      // 获取准确的光标位置坐标
       setTimeout(() => {
-        // 延迟获取位置，确保DOM已经更新
         const coords = view.coordsAtPos(cursorPos);
         if (coords) {
-          // 获取编辑器容器的位置
           const editorRect = editorRef.current.getBoundingClientRect();
           setCursorPosition({
             x: coords.left - editorRect.left,
-            y: coords.bottom - editorRect.top + 5, // 添加一点偏移以避免遮挡光标
+            y: coords.bottom - editorRect.top + 5,
           });
         }
       }, 0);
@@ -307,11 +279,40 @@ const FormulaEditor = ({
       return true;
     }
 
-    // 检查是否在输入函数名
+    // 检查 # 符号（函数建议）
+    if (textBeforeCursor.endsWith('#')) {
+      const filteredFunctions = allFunctionNames.filter(
+        (func) => !searchFuncTerm || func.toLowerCase().includes(searchFuncTerm.toLowerCase()),
+      );
+
+      setSuggestions(
+        filteredFunctions.map((func) => ({
+          id: func,
+          name: func,
+          description: functionDefinitions[func]?.description || '',
+        })),
+      );
+      setSuggestionType('function');
+      setShowSuggestions(true);
+
+      setTimeout(() => {
+        const coords = view.coordsAtPos(cursorPos);
+        if (coords) {
+          const editorRect = editorRef.current.getBoundingClientRect();
+          setCursorPosition({
+            x: coords.left - editorRect.left,
+            y: coords.bottom - editorRect.top + 5,
+          });
+        }
+      }, 0);
+
+      return true;
+    }
+
+    // 检查函数名输入中的自动完成
     const functionMatch = /\b([A-Z]+)$/.exec(textBeforeCursor);
     if (functionMatch) {
       const partialFunc = functionMatch[1];
-      // 过滤匹配的函数
       const matchingFunctions = allFunctionNames.filter((funcName) =>
         funcName.startsWith(partialFunc),
       );
@@ -327,15 +328,13 @@ const FormulaEditor = ({
         setSuggestionType('function');
         setShowSuggestions(true);
 
-        // 获取准确的光标位置坐标
         setTimeout(() => {
-          // 延迟获取位置，确保DOM已经更新
           const coords = view.coordsAtPos(cursorPos);
           if (coords && editorRef.current) {
             const editorRect = editorRef.current.getBoundingClientRect();
             setCursorPosition({
               x: coords.left - editorRect.left,
-              y: coords.bottom - editorRect.top + 5, // 添加一点偏移以避免遮挡光标
+              y: coords.bottom - editorRect.top + 5,
             });
           }
         }, 0);
@@ -344,12 +343,11 @@ const FormulaEditor = ({
       }
     }
 
-    // 如果不满足任何条件，隐藏建议
     setShowSuggestions(false);
     return false;
   };
 
-  // 初始化 CodeMirror - 主编辑器
+  // 初始化主编辑器
   useEffect(() => {
     if (editorRef.current && !cmViewRef.current) {
       const startState = EditorState.create({
@@ -371,15 +369,12 @@ const FormulaEditor = ({
               setFormula(update.state.doc.toString());
               setError(null);
               setValidationResult(null);
-
-              // 检查是否应该显示建议
               checkForSuggestions(update.view);
             }
           }),
           EditorView.domEventHandlers({
             keydown: (event, view) => {
               if (showSuggestions) {
-                // 如果按下了方向键、Enter或Esc，处理建议框导航
                 if (
                   event.key === 'ArrowDown' ||
                   event.key === 'ArrowUp' ||
@@ -391,11 +386,9 @@ const FormulaEditor = ({
                   if (event.key === 'Escape') {
                     setShowSuggestions(false);
                   } else if (event.key === 'Enter' && suggestionsRef.current?.selectedIndex >= 0) {
-                    // 插入选中的建议
                     const selected = suggestions[suggestionsRef.current.selectedIndex];
                     insertSuggestion(selected);
                   } else {
-                    // 更新选中项
                     if (!suggestionsRef.current) {
                       suggestionsRef.current = { selectedIndex: 0 };
                     } else {
@@ -408,17 +401,14 @@ const FormulaEditor = ({
                           suggestions.length;
                       }
                     }
-                    // 强制更新UI
                     setSuggestions([...suggestions]);
                   }
                   return true;
                 }
               }
-
               return false;
             },
             click: () => {
-              // 点击编辑器其他地方时隐藏建议
               setShowSuggestions(false);
               return false;
             },
@@ -451,37 +441,25 @@ const FormulaEditor = ({
             '.cm-selectionMatch': {
               backgroundColor: '#bae7ff4d',
             },
-            // 添加变量高亮样式
             '.cm-variableName': {
               color: '#2196f3',
               fontWeight: 'bold',
             },
-            // 函数高亮
             '.cm-function': {
               color: '#00c853',
               fontWeight: 'bold',
             },
-            // 字段类型高亮
             '.field-text': {
-              backgroundColor: '#0050b3 !important',
-              color: 'white !important',
+              color: '#2196f3 !important',
               fontWeight: 'bold !important',
-              borderRadius: '3px !important',
-              padding: '2px 4px !important',
             },
             '.field-number': {
-              backgroundColor: '#ad4e00 !important',
-              color: 'white !important',
+              color: '#2196f3 !important',
               fontWeight: 'bold !important',
-              borderRadius: '3px !important',
-              padding: '2px 4px !important',
             },
             '.field-datetime': {
-              backgroundColor: '#531dab !important',
-              color: 'white !important',
+              color: '#2196f3 !important',
               fontWeight: 'bold !important',
-              borderRadius: '3px !important',
-              padding: '2px 4px !important',
             },
           }),
         ],
@@ -501,10 +479,9 @@ const FormulaEditor = ({
     }
   }, [editorRef.current]);
 
-  // 初始化 CodeMirror - 示例公式编辑器
+  // 初始化示例编辑器
   useEffect(() => {
     if (exampleEditorRef.current && !exampleCmViewRef.current) {
-      // 示例公式使用英文字段名
       const updatedExampleFormula = 'ADD(count, age)';
 
       const exampleState = EditorState.create({
@@ -559,7 +536,7 @@ const FormulaEditor = ({
     }
   }, [exampleEditorRef.current]);
 
-  // 插入选中的建议
+  // 插入建议
   const insertSuggestion = (suggestion) => {
     if (cmViewRef.current) {
       const doc = cmViewRef.current.state.doc.toString();
@@ -569,18 +546,23 @@ const FormulaEditor = ({
       let from, insert;
 
       if (suggestionType === 'field') {
-        // 对于字段，处理 @ 字符之后的插入
+        // 字段建议（@符号）
         from = textBeforeCursor.lastIndexOf('@');
         if (from !== -1) {
-          // 替换 @ 为选中的字段名
           insert = suggestion.name;
         }
       } else if (suggestionType === 'function') {
-        // 对于函数，处理部分输入的函数名
-        const funcMatch = /\b([A-Z]+)$/.exec(textBeforeCursor);
-        if (funcMatch) {
-          from = cursorPos - funcMatch[1].length;
+        // 函数建议（#符号或自动完成）
+        const hashPos = textBeforeCursor.lastIndexOf('#');
+        if (hashPos !== -1 && hashPos === cursorPos - 1) {
+          from = hashPos;
           insert = suggestion.name + '()';
+        } else {
+          const funcMatch = /\b([A-Z]+)$/.exec(textBeforeCursor);
+          if (funcMatch) {
+            from = cursorPos - funcMatch[1].length;
+            insert = suggestion.name + '()';
+          }
         }
       }
 
@@ -589,7 +571,7 @@ const FormulaEditor = ({
           changes: { from, to: cursorPos, insert },
         });
 
-        // 如果插入的是函数，将光标定位到括号内
+        // 如果是函数，将光标定位到括号内
         if (suggestionType === 'function') {
           const newCursorPos = from + suggestion.name.length + 1;
           cmViewRef.current.dispatch({
@@ -620,16 +602,14 @@ const FormulaEditor = ({
     }
   });
 
-  // 更简单、更可靠的插入字段逻辑
+  // 插入字段
   const insertField = (fieldName) => {
     if (cmViewRef.current) {
       const pos = cmViewRef.current.state.selection.main.head;
       const doc = cmViewRef.current.state.doc.toString();
-
-      // 获取光标前的文本
       const beforeCursor = doc.substring(0, pos);
 
-      // 简化逻辑：查找最后一个未关闭的左括号
+      // 查找最后一个未关闭的左括号
       const lastOpenParenPos = beforeCursor.lastIndexOf('(');
       const lastCloseParenPos = beforeCursor.lastIndexOf(')');
 
@@ -637,11 +617,10 @@ const FormulaEditor = ({
 
       // 如果光标在函数括号内
       if (lastOpenParenPos > lastCloseParenPos) {
-        // 获取括号后的内容
         const afterParen = beforeCursor.substring(lastOpenParenPos + 1).trim();
 
         if (afterParen === '') {
-          // 括号内是空的，直接插入字段
+          // 括号内是空的
           insert = fieldName;
         } else {
           // 检查最后一个非空字符是否是逗号
@@ -657,7 +636,6 @@ const FormulaEditor = ({
         }
       }
 
-      // 执行插入
       cmViewRef.current.dispatch({
         changes: { from: pos, insert: insert },
       });
@@ -667,7 +645,7 @@ const FormulaEditor = ({
     }
   };
 
-  // 插入函数到公式
+  // 插入函数
   const insertFunction = (funcName) => {
     if (cmViewRef.current) {
       const fn = functionDefinitions[funcName];
@@ -697,11 +675,11 @@ const FormulaEditor = ({
     }
   };
 
-  // 解析并翻译公式（中文到英文）
+  // 解析并翻译公式（中文 -> 英文）
   const translateFormulaToEnglish = (formula) => {
     let translated = formula;
 
-    // 替换所有已知字段名，确保只替换完整的字段名（不是其他单词的一部分）
+    // 替换所有已知字段名
     Object.keys(fieldNameMapping).forEach((fieldName) => {
       const regex = new RegExp(`\\b${fieldName}\\b`, 'g');
       translated = translated.replace(regex, fieldNameMapping[fieldName]);
@@ -710,10 +688,75 @@ const FormulaEditor = ({
     return translated;
   };
 
+  // 提取公式中使用的变量
+  const extractVariables = (formulaText) => {
+    const variables = [];
+
+    // 使用正则表达式匹配所有非函数名的单词（可能是变量）
+    const possibleVariables =
+      formulaText.match(/\b[a-zA-Z\u4e00-\u9fa5][\w\u4e00-\u9fa5]*\b/g) || [];
+
+    // 排除函数名和关键字
+    const functionNames = allFunctionNames.map((name) => name.toUpperCase());
+    const keywords = ['TRUE', 'FALSE', 'NULL'];
+
+    // 对每个可能的变量检查它是否是字段
+    possibleVariables.forEach((variable) => {
+      // 不是函数名且不是关键字
+      if (
+        !functionNames.includes(variable.toUpperCase()) &&
+        !keywords.includes(variable.toUpperCase())
+      ) {
+        // 检查是否是字段名
+        const field = fields.find((f) => f.name === variable);
+        if (field && !variables.find((v) => v.name === variable)) {
+          variables.push({
+            name: variable,
+            type: field.type,
+            mapping: field.mapping,
+          });
+        }
+      }
+    });
+
+    return variables;
+  };
+
+  // 验证函数的参数数量
+  const validateFunctionParameters = (funcName, params) => {
+    const func = functionDefinitions[funcName];
+    if (!func) return false;
+
+    // 检查函数定义中的参数信息
+    const requiredParams = func.params ? func.params.filter((p) => !p.name.includes('...')) : [];
+
+    // 如果有参数但传入的是空字符串，则参数不足
+    if (requiredParams.length > 0 && (!params || params.trim() === '')) {
+      return false;
+    }
+
+    // 如果函数定义中有可变参数（...）
+    const hasVariableParams = func.params ? func.params.some((p) => p.name.includes('...')) : false;
+
+    // 分割参数
+    const paramsList = params
+      ? params
+          .split(',')
+          .map((p) => p.trim())
+          .filter((p) => p !== '')
+      : [];
+
+    // 如果没有可变参数，则参数数量必须匹配
+    if (!hasVariableParams && paramsList.length < requiredParams.length) {
+      return false;
+    }
+
+    return true;
+  };
+
   // 验证公式
   const validateFormula = () => {
     try {
-      // 基本语法验证
       const formulaText = formula.trim();
 
       if (!formulaText) {
@@ -755,7 +798,7 @@ const FormulaEditor = ({
         return false;
       }
 
-      // 检查参数
+      // 提取参数
       const parametersText = formulaText.substring(
         formulaText.indexOf('(') + 1,
         formulaText.lastIndexOf(')'),
@@ -768,25 +811,20 @@ const FormulaEditor = ({
         return false;
       }
 
-      // 尝试使用 mathjs 解析（基本数学运算）
-      if (
-        formulaText.includes('+') ||
-        formulaText.includes('-') ||
-        formulaText.includes('*') ||
-        formulaText.includes('/')
-      ) {
-        try {
-          math.parse(formulaText);
-        } catch (e) {
-          setError('公式格式错误: ' + e.message);
-          messageApi.error('公式格式错误: ' + e.message);
-          return false;
-        }
+      // 验证函数参数数量
+      if (!validateFunctionParameters(functionName, parametersText)) {
+        setError(`公式格式错误: 函数 "${functionName}" 的参数数量不正确`);
+        messageApi.error(`公式格式错误: 函数 "${functionName}" 的参数数量不正确`);
+        return false;
       }
 
-      // 验证通过，生成中英文版本
+      // 设置验证结果
       const chineseVersion = formulaText;
       const englishVersion = translateFormulaToEnglish(formulaText);
+
+      // 抽取变量并准备表单
+      const variables = extractVariables(formula);
+      setCalculationVariables(variables);
 
       // 设置验证结果
       setValidationResult({
@@ -795,8 +833,12 @@ const FormulaEditor = ({
         englishVersion,
       });
 
-      // 显示翻译结果弹窗
-      setTranslationVisible(true);
+      // 重置表单和计算结果
+      calculationForm.resetFields();
+      setCalculationResult(null);
+
+      // 显示计算弹窗
+      setCalculationVisible(true);
 
       setError(null);
       return true;
@@ -804,6 +846,120 @@ const FormulaEditor = ({
       setError('验证错误: ' + err.message);
       messageApi.error('验证错误: ' + err.message);
       return false;
+    }
+  };
+
+  // 计算公式结果
+  const handleCalculate = (values) => {
+    try {
+      // 获取英文公式
+      const calculationFormula = translateFormulaToEnglish(formula);
+
+      // 创建用于计算的环境
+      const scope = {};
+
+      // 将表单值添加到作用域
+      calculationVariables.forEach((variable) => {
+        const value = values[variable.name];
+        scope[variable.mapping] = value;
+      });
+
+      // 解析公式结构
+      let result;
+
+      // 提取函数名和参数
+      const funcMatch = calculationFormula.match(/^([A-Z]+)\((.*)\)$/);
+      if (funcMatch) {
+        const funcName = funcMatch[1];
+        const paramsText = funcMatch[2];
+        const params = paramsText.split(',').map((p) => p.trim());
+
+        // 替换参数中的字段名为其值
+        const paramValues = params.map((param) => {
+          // 如果参数是直接的字段名
+          if (scope[param] !== undefined) {
+            return scope[param];
+          }
+          // 如果参数是数值常量
+          else if (!isNaN(parseFloat(param))) {
+            return parseFloat(param);
+          }
+          // 如果参数是字符串常量
+          else if (
+            (param.startsWith('"') && param.endsWith('"')) ||
+            (param.startsWith("'") && param.endsWith("'"))
+          ) {
+            return param.substring(1, param.length - 1);
+          }
+          // 如果参数是复杂表达式
+          else {
+            try {
+              return math.evaluate(param, scope);
+            } catch (e) {
+              return param; // 如果计算失败，保持原样
+            }
+          }
+        });
+
+        // 根据函数名执行计算
+        switch (funcName) {
+          case 'ADD':
+            result = paramValues.reduce((sum, val) => sum + Number(val), 0);
+            break;
+          case 'SUBTRACT':
+            result = Number(paramValues[0]) - Number(paramValues[1]);
+            break;
+          case 'MULTIPLY':
+            result = paramValues.reduce((product, val) => product * Number(val), 1);
+            break;
+          case 'DIVIDE':
+            if (Number(paramValues[1]) === 0) {
+              throw new Error('除数不能为零');
+            }
+            result = Number(paramValues[0]) / Number(paramValues[1]);
+            break;
+          case 'SUM':
+            result = paramValues.reduce((sum, val) => sum + Number(val), 0);
+            break;
+          case 'AVERAGE':
+            result = paramValues.reduce((sum, val) => sum + Number(val), 0) / paramValues.length;
+            break;
+          case 'CONCATENATE':
+            result = paramValues.join('');
+            break;
+          case 'IF':
+            // 处理IF函数
+            let condition;
+            try {
+              condition = math.evaluate(params[0], scope);
+            } catch (e) {
+              condition = params[0] === 'true' || params[0] === true;
+            }
+            result = condition ? paramValues[1] : paramValues[2];
+            break;
+          default:
+            throw new Error(`不支持的函数: ${funcName}`);
+        }
+      } else {
+        // 如果不是函数调用格式，尝试直接计算表达式
+        result = math.evaluate(calculationFormula, scope);
+      }
+
+      // 设置计算结果
+      setCalculationResult({
+        formula: formula,
+        englishFormula: calculationFormula,
+        variables: calculationVariables.map((v) => ({
+          name: v.name,
+          value: values[v.name],
+          mapping: v.mapping,
+        })),
+        result: result,
+      });
+
+      messageApi.success('计算成功');
+    } catch (err) {
+      messageApi.error('计算错误: ' + err.message);
     }
   };
 
@@ -829,7 +985,7 @@ const FormulaEditor = ({
     );
   };
 
-  // 渲染字段分组
+  // 渲染字段列表
   const renderFieldGroups = () => {
     return (
       <div className="fields-container">
@@ -942,12 +1098,12 @@ const FormulaEditor = ({
     );
   };
 
-  // 组件样式，根据传入的高度自适应
+  // 组件样式
   const containerStyle = {
     height: height,
     display: 'flex',
     flexDirection: 'column',
-    minHeight: '400px', // 设置最小高度，确保布局正常
+    minHeight: '400px',
   };
 
   return (
@@ -989,6 +1145,10 @@ const FormulaEditor = ({
                   <ExclamationCircleOutlined /> {error}
                 </div>
               )}
+              <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
+                <span style={{ marginRight: '10px' }}>提示：输入 @ 显示字段</span>
+                输入 # 显示函数
+              </div>
             </div>
           </div>
 
@@ -1086,7 +1246,6 @@ const FormulaEditor = ({
           </div>
         </Content>
       </Layout>
-
       {/* 函数详情弹窗 */}
       <Modal
         title={`${selectedFunction?.name || ''} 函数详情`}
@@ -1150,47 +1309,152 @@ const FormulaEditor = ({
         )}
       </Modal>
 
-      {/* 验证结果/翻译弹窗 */}
+      {/* 计算公式弹窗 */}
       <Modal
-        title="公式验证结果"
-        open={translationVisible}
-        onCancel={() => setTranslationVisible(false)}
-        footer={[
-          <Button
-            key="close"
-            type="primary"
-            onClick={() => setTranslationVisible(false)}
-          >
-            确认
-          </Button>,
-        ]}
+        title="计算公式结果"
+        open={calculationVisible}
+        onCancel={() => setCalculationVisible(false)}
+        footer={null}
         width={600}
       >
-        {validationResult && (
-          <div className="translation-result">
-            <div className="translation-header">
-              <CheckCircleOutlined className="translation-success-icon" />
-              <Text
-                strong
-                style={{ fontSize: '16px' }}
-              >
-                公式格式正确
-              </Text>
-            </div>
+        <div style={{ padding: '16px 0' }}>
+          {validationResult && (
+            <>
+              <div style={{ marginBottom: '16px' }}>
+                <Title level={5}>中文公式:</Title>
+                <div className="formula-code chinese-formula">
+                  {validationResult.chineseVersion}
+                </div>
+              </div>
 
-            <Divider />
+              <div style={{ marginBottom: '16px' }}>
+                <Title level={5}>英文公式:</Title>
+                <div className="formula-code english-formula">
+                  {validationResult.englishVersion}
+                </div>
+              </div>
 
-            <div style={{ marginBottom: '24px' }}>
-              <Title level={5}>中文格式:</Title>
-              <div className="formula-code chinese-formula">{validationResult.chineseVersion}</div>
-            </div>
+              {calculationVariables.length > 0 ? (
+                <>
+                  <Divider orientation="left">输入变量值</Divider>
 
-            <div>
-              <Title level={5}>英文格式:</Title>
-              <div className="formula-code english-formula">{validationResult.englishVersion}</div>
-            </div>
-          </div>
-        )}
+                  <Form
+                    form={calculationForm}
+                    onFinish={handleCalculate}
+                    layout="vertical"
+                  >
+                    {calculationVariables.map((variable) => (
+                      <Form.Item
+                        key={variable.name}
+                        name={variable.name}
+                        label={
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <span style={{ marginRight: '8px' }}>{variable.name}</span>
+                            <Tag color={getTypeColor(variable.type)}>{variable.type}</Tag>
+                          </div>
+                        }
+                        rules={[{ required: true, message: `请输入${variable.name}的值` }]}
+                      >
+                        {variable.type === fieldTypes.NUMBER ? (
+                          <InputNumber
+                            style={{ width: '100%' }}
+                            placeholder={`请输入${variable.name}的值`}
+                          />
+                        ) : (
+                          <Input placeholder={`请输入${variable.name}的值`} />
+                        )}
+                      </Form.Item>
+                    ))}
+
+                    <Form.Item>
+                      <Space style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button onClick={() => setCalculationVisible(false)}>取消</Button>
+                        <Button
+                          type="primary"
+                          htmlType="submit"
+                          icon={<CalculatorOutlined />}
+                        >
+                          计算
+                        </Button>
+                      </Space>
+                    </Form.Item>
+                  </Form>
+
+                  {calculationResult && (
+                    <>
+                      <Divider orientation="left">计算结果</Divider>
+
+                      <div
+                        style={{
+                          padding: '16px',
+                          backgroundColor: '#f6ffed',
+                          border: '1px solid #b7eb8f',
+                          borderRadius: '6px',
+                          marginBottom: '16px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <CheckCircleOutlined
+                            style={{ color: '#52c41a', marginRight: '8px', fontSize: '20px' }}
+                          />
+                          <Text
+                            strong
+                            style={{ fontSize: '16px' }}
+                          >
+                            结果:{' '}
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: '18px',
+                              marginLeft: '8px',
+                              backgroundColor: '#fff',
+                              padding: '4px 12px',
+                              borderRadius: '4px',
+                              border: '1px solid #d9d9d9',
+                            }}
+                          >
+                            {typeof calculationResult.result === 'number'
+                              ? calculationResult.result.toLocaleString()
+                              : calculationResult.result}
+                          </Text>
+                        </div>
+                      </div>
+
+                      {/* 显示详细计算信息 */}
+                      <div style={{ marginTop: '16px', fontSize: '14px', color: '#666' }}>
+                        <Text strong>计算详情:</Text>
+                        <pre
+                          style={{
+                            marginTop: '8px',
+                            padding: '12px',
+                            backgroundColor: '#f8f8f8',
+                            borderRadius: '4px',
+                            overflowX: 'auto',
+                          }}
+                        >
+                          {JSON.stringify(
+                            {
+                              variables: calculationResult.variables.reduce((acc, v) => {
+                                acc[v.mapping] = v.value;
+                                return acc;
+                              }, {}),
+                              formula: calculationResult.englishFormula,
+                              result: calculationResult.result,
+                            },
+                            null,
+                            2,
+                          )}
+                        </pre>
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <Empty description="公式中未检测到变量" />
+              )}
+            </>
+          )}
+        </div>
       </Modal>
     </>
   );
