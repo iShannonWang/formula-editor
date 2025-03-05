@@ -12,7 +12,7 @@ function App() {
   return (
     <div className="app">
       <FormulaEditor
-        // height="800px"
+        height="80vh"
         fields={FIELDS}
         fieldTypes={FIELD_TYPES}
         fieldTypeConfigs={FIELD_TYPE_CONFIGS}
