@@ -1,4 +1,3 @@
-/* SimpleFormulaEditor.css */
 .formula-editor-layout {
   display: flex;
   flex-direction: column;
@@ -135,7 +134,7 @@
 .highlight-comma {
   color: #546e7a;
 }
-
+/* 
 .error-message {
   margin-top: 12px;
   padding: 10px 16px;
@@ -147,7 +146,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
+} */
 
 .panels-section {
   flex: 1;

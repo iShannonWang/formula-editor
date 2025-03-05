@@ -1,4 +1,3 @@
-// SimpleFormulaEditor.jsx
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import {
   Layout,
@@ -24,14 +23,14 @@ import {
   CheckCircleOutlined,
   RightOutlined,
 } from '@ant-design/icons';
-import './SimpleFormulaEditor.css';
+import './index.css';
 
 const { Content, Sider } = Layout;
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
 
 // 简化版公式编辑器（无库依赖）
-const SimpleFormulaEditor = forwardRef(
+const FormulaEditor = forwardRef(
   (
     {
       height = '40vh',
@@ -154,25 +153,37 @@ const SimpleFormulaEditor = forwardRef(
       if (!formulaText) return [];
 
       const variables = [];
-      const possibleVars = formulaText.match(/\b[a-zA-Z\u4e00-\u9fa5][\w\u4e00-\u9fa5]*\b/g) || [];
-      const functionNames = allFunctionNames.map((name) => name.toUpperCase());
-      const keywords = ['TRUE', 'FALSE', 'NULL'];
 
-      for (const varName of possibleVars) {
-        // 排除函数名和关键字
+      // 提取函数参数部分
+      const funcMatch = formulaText.match(/^([A-Za-z]+)\((.*)\)$/);
+      if (!funcMatch) return [];
+
+      const paramsText = funcMatch[2];
+      const params = paramsText.split(',').map((p) => p.trim());
+
+      // 检查每个参数是否是字段
+      for (const param of params) {
+        // 跳过数字常量
+        if (!isNaN(parseFloat(param)) && isFinite(param)) {
+          continue;
+        }
+
+        // 跳过字符串常量
         if (
-          !functionNames.includes(varName.toUpperCase()) &&
-          !keywords.includes(varName.toUpperCase())
+          (param.startsWith('"') && param.endsWith('"')) ||
+          (param.startsWith("'") && param.endsWith("'"))
         ) {
-          // 检查是否是字段名
-          const field = fields.find((f) => f.name === varName);
-          if (field && !variables.find((v) => v.name === varName)) {
-            variables.push({
-              name: varName,
-              type: field.type,
-              mapping: field.mapping,
-            });
-          }
+          continue;
+        }
+
+        // 检查是否是已知字段
+        const field = fields.find((f) => f.name === param || f.mapping === param);
+        if (field && !variables.find((v) => v.name === field.name)) {
+          variables.push({
+            name: field.name,
+            type: field.type,
+            mapping: field.mapping,
+          });
         }
       }
 
@@ -499,6 +510,36 @@ const SimpleFormulaEditor = forwardRef(
         // 翻译公式（中文 -> 英文）
         const translatedFormula = translateFormula(formula, fieldNameMapping);
 
+        // 提取变量 - 既检查原始公式也检查翻译后的公式
+        let variables = extractVariables(formula);
+
+        // 如果从原始公式中没有提取到变量，尝试从翻译后的公式中提取
+        if (variables.length === 0) {
+          // 从英文公式中识别字段映射
+          const englishFields = fields.map((field) => field.mapping);
+
+          // 提取函数参数部分
+          const funcMatch = translatedFormula.match(/^([A-Za-z]+)\((.*)\)$/);
+          if (funcMatch) {
+            const paramsText = funcMatch[2];
+            const params = paramsText.split(',').map((p) => p.trim());
+
+            // 检查每个参数是否是已知字段映射
+            for (const param of params) {
+              if (englishFields.includes(param)) {
+                const field = fields.find((f) => f.mapping === param);
+                if (field && !variables.find((v) => v.mapping === param)) {
+                  variables.push({
+                    name: field.name,
+                    type: field.type,
+                    mapping: field.mapping,
+                  });
+                }
+              }
+            }
+          }
+        }
+
         // 设置验证结果
         setValidationResult({
           isValid: true,
@@ -511,6 +552,7 @@ const SimpleFormulaEditor = forwardRef(
         setError(null);
         return true;
       } catch (err) {
+        console.error('验证错误:', err);
         setError('验证错误: ' + err.message);
         messageApi.error('验证错误: ' + err.message);
         return false;
@@ -673,11 +715,11 @@ const SimpleFormulaEditor = forwardRef(
                   />
                 </div>
 
-                {error && (
+                {/* {error && (
                   <div className="error-message">
                     <ExclamationCircleOutlined /> {error}
                   </div>
-                )}
+                )} */}
               </div>
             </div>
 
@@ -885,4 +927,4 @@ const SimpleFormulaEditor = forwardRef(
   },
 );
 
-export default SimpleFormulaEditor;
+export default FormulaEditor;

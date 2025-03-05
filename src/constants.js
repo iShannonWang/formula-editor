@@ -80,6 +80,11 @@ export const FUNCTIONS = {
       { name: 'number2', description: '第二个数值' },
       { name: '...', description: '可选的额外数值' },
     ],
+    minArgs: 1,
+    maxArgs: Infinity,
+    // 添加计算方法
+    calculate: (values) => values.reduce((sum, val) =>
+      (typeof val === 'number' ? sum + val : sum), 0)
   },
   SUBTRACT: {
     description: '从第一个数字中减去第二个数字',
@@ -90,6 +95,9 @@ export const FUNCTIONS = {
       { name: 'number1', description: '被减数' },
       { name: 'number2', description: '减数' },
     ],
+    minArgs: 2,
+    maxArgs: 2,
+    calculate: (values) => values[0] - values[1]
   },
   MULTIPLY: {
     description: '将两个或多个数字相乘',
@@ -101,6 +109,10 @@ export const FUNCTIONS = {
       { name: 'number2', description: '第二个数值' },
       { name: '...', description: '可选的额外数值' },
     ],
+    minArgs: 2,
+    maxArgs: Infinity,
+    calculate: (values) => values.reduce((product, val) =>
+      (typeof val === 'number' ? product * val : 0), 1)
   },
   DIVIDE: {
     description: '将第一个数字除以第二个数字',
@@ -111,6 +123,12 @@ export const FUNCTIONS = {
       { name: 'number1', description: '被除数' },
       { name: 'number2', description: '除数（不能为0）' },
     ],
+    minArgs: 2,
+    maxArgs: 2,
+    calculate: (values) => {
+      if (values[1] === 0) throw new Error('除数不能为零');
+      return values[0] / values[1];
+    }
   },
   IF: {
     description: '根据条件返回不同的值',
@@ -123,6 +141,9 @@ export const FUNCTIONS = {
       { name: 'value_if_true', description: '如果条件为TRUE，则返回此值' },
       { name: 'value_if_false', description: '如果条件为FALSE，则返回此值' },
     ],
+    minArgs: 3,
+    maxArgs: 3,
+    calculate: (values) => values[0] ? values[1] : values[2]
   },
   ISEMPTY: {
     description: '检查值是否为空',
@@ -131,6 +152,14 @@ export const FUNCTIONS = {
     details:
       'ISEMPTY函数检查指定值是否为空（NULL、空字符串或未定义）。如果值为空，则返回TRUE；否则返回FALSE。',
     params: [{ name: 'value', description: '要检查的值' }],
+    minArgs: 1,
+    maxArgs: 1,
+    calculate: (values) => {
+      const value = values[0];
+      return value === null || value === undefined || value === '' ||
+        (Array.isArray(value) && value.length === 0) ||
+        (typeof value === 'object' && Object.keys(value).length === 0);
+    }
   },
   AVERAGE: {
     description: 'AVERAGE函数可以获取一组数值的算术平均值',
@@ -142,6 +171,13 @@ export const FUNCTIONS = {
       { name: '数字2', description: '第二个数值' },
       { name: '...', description: '可选的额外数值' },
     ],
+    minArgs: 1,
+    maxArgs: Infinity,
+    calculate: (values) => {
+      const numValues = values.filter(v => typeof v === 'number');
+      if (numValues.length === 0) return 0;
+      return numValues.reduce((sum, val) => sum + val, 0) / numValues.length;
+    }
   },
   CONCATENATE: {
     description: '将多个文本值合并为一个文本值',
@@ -153,6 +189,9 @@ export const FUNCTIONS = {
       { name: 'text2', description: '第二个文本值' },
       { name: '...', description: '可选的额外文本值' },
     ],
+    minArgs: 1,
+    maxArgs: Infinity,
+    calculate: (values) => values.join('')
   },
   SUM: {
     description: '求和函数',
@@ -164,23 +203,10 @@ export const FUNCTIONS = {
       { name: 'number2', description: '第二个数值' },
       { name: '...', description: '可选的额外数值' },
     ],
-  },
-  LOGINUSER: {
-    description: '返回当前登录用户信息',
-    syntax: 'LOGINUSER()',
-    example: 'LOGINUSER() 返回当前登录用户',
-    details: 'LOGINUSER函数返回当前登录用户的信息，例如用户ID、用户名、角色等。',
-    params: [],
-  },
-  EQ: {
-    description: '判断两个值是否相等',
-    syntax: 'EQ(value1, value2)',
-    example: 'EQ(A1, B1) 如果A1等于B1则返回true',
-    details: 'EQ函数比较两个值是否相等。如果相等，则返回TRUE；否则返回FALSE。',
-    params: [
-      { name: 'value1', description: '第一个要比较的值' },
-      { name: 'value2', description: '第二个要比较的值' },
-    ],
+    minArgs: 1,
+    maxArgs: Infinity,
+    calculate: (values) => values.reduce((sum, val) =>
+      (typeof val === 'number' ? sum + val : sum), 0)
   },
   AND: {
     description: '如果所有参数都为真，则返回TRUE',
@@ -192,6 +218,9 @@ export const FUNCTIONS = {
       { name: 'logical2', description: '第二个逻辑表达式' },
       { name: '...', description: '可选的额外逻辑表达式' },
     ],
+    minArgs: 1,
+    maxArgs: Infinity,
+    calculate: (values) => values.every(Boolean)
   },
   OR: {
     description: '如果任何参数为真，则返回TRUE',
@@ -204,6 +233,9 @@ export const FUNCTIONS = {
       { name: 'logical2', description: '第二个逻辑表达式' },
       { name: '...', description: '可选的额外逻辑表达式' },
     ],
+    minArgs: 1,
+    maxArgs: Infinity,
+    calculate: (values) => values.some(Boolean)
   },
   NOT: {
     description: '对逻辑值取反',
@@ -212,7 +244,23 @@ export const FUNCTIONS = {
     details: 'NOT函数对传入的逻辑值取反。如果逻辑值为TRUE，则返回FALSE；如果逻辑值为FALSE，则返回TRUE。',
     params: [
       { name: 'logical', description: '要取反的逻辑表达式' }
-    ]
+    ],
+    minArgs: 1,
+    maxArgs: 1,
+    calculate: (values) => !values[0]
+  },
+  EQ: {
+    description: '判断两个值是否相等',
+    syntax: 'EQ(value1, value2)',
+    example: 'EQ(A1, B1) 如果A1等于B1则返回true',
+    details: 'EQ函数比较两个值是否相等。如果相等，则返回TRUE；否则返回FALSE。',
+    params: [
+      { name: 'value1', description: '第一个要比较的值' },
+      { name: 'value2', description: '第二个要比较的值' },
+    ],
+    minArgs: 2,
+    maxArgs: 2,
+    calculate: (values) => values[0] == values[1]
   },
   GT: {
     description: '判断第一个值是否大于第二个值',
@@ -222,7 +270,10 @@ export const FUNCTIONS = {
     params: [
       { name: 'value1', description: '第一个要比较的值' },
       { name: 'value2', description: '第二个要比较的值' }
-    ]
+    ],
+    minArgs: 2,
+    maxArgs: 2,
+    calculate: (values) => values[0] > values[1]
   },
   LT: {
     description: '判断第一个值是否小于第二个值',
@@ -232,7 +283,10 @@ export const FUNCTIONS = {
     params: [
       { name: 'value1', description: '第一个要比较的值' },
       { name: 'value2', description: '第二个要比较的值' }
-    ]
+    ],
+    minArgs: 2,
+    maxArgs: 2,
+    calculate: (values) => values[0] < values[1]
   },
   GTE: {
     description: '判断第一个值是否大于等于第二个值',
@@ -242,7 +296,10 @@ export const FUNCTIONS = {
     params: [
       { name: 'value1', description: '第一个要比较的值' },
       { name: 'value2', description: '第二个要比较的值' }
-    ]
+    ],
+    minArgs: 2,
+    maxArgs: 2,
+    calculate: (values) => values[0] >= values[1]
   },
   LTE: {
     description: '判断第一个值是否小于等于第二个值',
@@ -252,7 +309,9 @@ export const FUNCTIONS = {
     params: [
       { name: 'value1', description: '第一个要比较的值' },
       { name: 'value2', description: '第二个要比较的值' }
-    ]
+    ],
+    minArgs: 2,
+    maxArgs: 2,
+    calculate: (values) => values[0] <= values[1]
   },
-
 };

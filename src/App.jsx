@@ -1,7 +1,7 @@
 // App.jsx 使用简化版公式编辑器
 import React, { useRef, useState } from 'react';
 import { Button, Space, message, Typography } from 'antd';
-import SimpleFormulaEditor from './components/SimpleFormulaEditor';
+import FormulaEditor from './components/FormulaEditor';
 import './App.css';
 
 // 导入常量
@@ -104,7 +104,7 @@ function App() {
         </div>
       )} */}
 
-      <SimpleFormulaEditor
+      <FormulaEditor
         ref={formulaEditorRef}
         height="80vh"
         fields={FIELDS}
