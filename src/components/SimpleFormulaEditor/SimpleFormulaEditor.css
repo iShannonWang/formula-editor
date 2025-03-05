@@ -1,4 +1,4 @@
-/* FormulaEditor.css */
+/* SimpleFormulaEditor.css */
 .formula-editor-layout {
   display: flex;
   flex-direction: column;
@@ -55,10 +55,85 @@
 }
 
 .editor-container {
+  position: relative;
   height: 48px;
   border-radius: 6px;
   overflow: hidden;
   transition: all 0.3s;
+  border: 1px solid #d9d9d9;
+  background-color: #fff;
+}
+
+/* 公式编辑器样式 */
+.formula-textarea {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 8px 12px;
+  font-family: 'Fira Code', monospace, Consolas, 'Courier New', Courier;
+  font-size: 14px;
+  line-height: 1.6;
+  color: transparent;
+  background: transparent;
+  caret-color: #000;
+  resize: none;
+  border: none;
+  outline: none;
+  z-index: 2;
+}
+
+/* 高亮层样式 */
+.highlight-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 8px 12px;
+  font-family: 'Fira Code', monospace, Consolas, 'Courier New', Courier;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 高亮函数名 */
+.highlight-function {
+  color: #00c853;
+  font-weight: bold;
+}
+
+/* 高亮字段 */
+.highlight-field {
+  font-weight: bold;
+}
+
+/* 高亮特定类型的字段 */
+.highlight-text {
+  color: #2196f3;
+}
+
+.highlight-number {
+  color: #ff9100;
+}
+
+.highlight-datetime {
+  color: #9c27b0;
+}
+
+/* 高亮括号和逗号 */
+.highlight-bracket {
+  color: #546e7a;
+  font-weight: 500;
+}
+
+.highlight-comma {
+  color: #546e7a;
 }
 
 .error-message {
@@ -204,24 +279,6 @@
   padding: 6px 0 12px 12px;
 }
 
-/* 函数详情样式 */
-.function-doc {
-  padding: 0;
-}
-
-.function-doc h5 {
-  margin-top: 0;
-  color: #1890ff;
-}
-
-/* 按钮悬停效果 */
-.ant-btn-primary.ant-btn-ghost:hover,
-.ant-btn-primary.ant-btn-ghost:focus {
-  color: #1890ff;
-  border-color: #1890ff;
-  background-color: rgba(24, 144, 255, 0.05);
-}
-
 /* 函数详情弹窗样式 */
 .function-detail-modal .ant-modal-header {
   border-bottom: none;
@@ -250,7 +307,7 @@
   border-left: 4px solid #52c41a;
 }
 
-/* 公式验证结果弹窗样式 */
+/* 翻译结果弹窗样式 */
 .translation-result {
   padding: 16px 0;
 }
@@ -288,120 +345,6 @@
   border-left-color: #13c2c2;
 }
 
-/* CodeMirror 自定义样式 */
-.cm-editor {
-  font-size: 14px !important;
-  border-radius: 6px !important;
-  overflow: hidden !important;
-}
-
-.cm-content {
-  font-family: 'Fira Code', monospace !important;
-  padding: 10px !important;
-}
-
-.cm-line {
-  padding: 2px 0 !important;
-  line-height: 1.6 !important;
-}
-
-/* 关键词高亮样式 */
-.cm-keyword {
-  color: #7c4dff !important;
-  font-weight: 500 !important;
-}
-
-.cm-string {
-  color: #29b6f6 !important;
-}
-
-.cm-number {
-  color: #ff9100 !important;
-}
-
-.cm-operator {
-  color: #f50057 !important;
-}
-
-.cm-function {
-  color: #00c853 !important;
-  font-weight: 500 !important;
-}
-
-.cm-comment {
-  color: #757575 !important;
-  font-style: italic !important;
-}
-
-.cm-bracket {
-  color: #546e7a !important;
-  font-weight: 500 !important;
-}
-
-/* 字段类型高亮样式 */
-.field-text,
-.field-number,
-.field-datetime {
-  background-color: #135200 !important;
-  color: white !important;
-  font-weight: bold !important;
-  border-radius: 3px !important;
-  padding: 2px 4px !important;
-}
-
-.field-text {
-  background-color: #0050b3 !important;
-}
-
-.field-number {
-  background-color: #ad4e00 !important;
-}
-
-.field-datetime {
-  background-color: #531dab !important;
-}
-
-.suggestions-container {
-  background-color: white;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.suggestion-item {
-  cursor: pointer;
-  padding: 8px 12px;
-  transition: all 0.2s;
-}
-
-.suggestion-item:hover {
-  background-color: #f5f5f5;
-}
-
-.suggestion-item-selected {
-  background-color: #e6f7ff !important;
-}
-
-/* 滚动条样式 */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f5f5f5;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #aaa;
-}
-
 /* 响应式布局调整 */
 @media (max-width: 1280px) {
   .formula-content {
@@ -424,4 +367,19 @@
     height: auto;
     min-height: 200px;
   }
+}
+
+/* 自动调整编辑器高度 */
+.editor-container:focus-within {
+  height: auto;
+  min-height: 48px;
+  max-height: 200px;
+}
+
+.formula-textarea:focus + .highlight-layer,
+.formula-textarea:focus {
+  height: auto;
+  min-height: 48px;
+  max-height: 200px;
+  overflow-y: auto;
 }
