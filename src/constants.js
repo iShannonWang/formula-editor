@@ -42,7 +42,7 @@ export const FIELDS = [
 
 // ==== 函数分组 ====
 export const FUNCTION_GROUPS = {
-  基础运算: ['ADD', 'SUBTRACT', 'MULTIPLY', 'DIVIDE', 'SUM', 'AVERAGE'],
+  基础运算: ['ADD', 'SUBTRACT', 'MULTIPLY', 'DIVIDE', 'AVERAGE'],
   逻辑函数: [
     // 条件判断
     'IF',
@@ -192,21 +192,6 @@ export const FUNCTIONS = {
     minArgs: 1,
     maxArgs: Infinity,
     calculate: (values) => values.join('')
-  },
-  SUM: {
-    description: '求和函数',
-    syntax: 'SUM(number1, number2, ...)',
-    example: 'SUM(1, 2, 3, 4) 返回 10',
-    details: 'SUM函数计算所有数值参数的总和。忽略文本值和逻辑值。',
-    params: [
-      { name: 'number1', description: '第一个数值' },
-      { name: 'number2', description: '第二个数值' },
-      { name: '...', description: '可选的额外数值' },
-    ],
-    minArgs: 1,
-    maxArgs: Infinity,
-    calculate: (values) => values.reduce((sum, val) =>
-      (typeof val === 'number' ? sum + val : sum), 0)
   },
   AND: {
     description: '如果所有参数都为真，则返回TRUE',

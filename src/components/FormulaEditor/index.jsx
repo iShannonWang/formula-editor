@@ -23,11 +23,12 @@ import {
   CheckCircleOutlined,
   RightOutlined,
 } from '@ant-design/icons';
-import './index.css';
+import styles from './index.module.less';
 
 const { Content, Sider } = Layout;
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
+const { TextArea } = Input;
 
 // 简化版公式编辑器（无库依赖）
 const FormulaEditor = forwardRef(
@@ -51,7 +52,6 @@ const FormulaEditor = forwardRef(
     const [error, setError] = useState(null);
     const [messageApi, contextHolder] = message.useMessage();
     const [validationResult, setValidationResult] = useState(null);
-    const [translationVisible, setTranslationVisible] = useState(false);
     const [functionDetailVisible, setFunctionDetailVisible] = useState(false);
 
     // 引用
@@ -109,10 +109,7 @@ const FormulaEditor = forwardRef(
       // 手动设置公式
       setFormula: (newFormula) => {
         setFormula(newFormula);
-        if (editorRef.current) {
-          editorRef.current.value = newFormula;
-          updateHighlight(newFormula);
-        }
+        updateHighlight(newFormula);
       },
     }));
 
@@ -190,7 +187,7 @@ const FormulaEditor = forwardRef(
       return variables;
     };
 
-    // 增强的验证函数 - 检查参数类型匹配
+    // 增强的验证函数 - 实现更健壮的嵌套函数解析
     const validateFormula = (formulaText) => {
       if (!formulaText || formulaText.trim() === '') {
         return {
@@ -238,11 +235,122 @@ const FormulaEditor = forwardRef(
         };
       }
 
-      // 参数提取和检查
-      const parametersText = formulaText.substring(
-        formulaText.indexOf('(') + 1,
-        formulaText.lastIndexOf(')'),
-      );
+      try {
+        // 使用更健壮的方法解析参数，考虑嵌套函数
+        const { params, isValid, error } = parseParameters(formulaText);
+
+        if (!isValid) {
+          return { isValid, error };
+        }
+
+        // 参数数量检查
+        const minArgs = funcDef.params
+          ? funcDef.params.filter((p) => !p.name.includes('...')).length
+          : funcDef.minArgs || 0;
+
+        const maxArgs =
+          funcDef.params && funcDef.params.some((p) => p.name.includes('...'))
+            ? Infinity
+            : funcDef.maxArgs || minArgs;
+
+        if (params.length < minArgs) {
+          return {
+            isValid: false,
+            error: `函数 ${functionName} 至少需要 ${minArgs} 个参数，但只提供了 ${params.length} 个`,
+          };
+        }
+
+        if (maxArgs !== Infinity && params.length > maxArgs) {
+          return {
+            isValid: false,
+            error: `函数 ${functionName} 最多接受 ${maxArgs} 个参数，但提供了 ${params.length} 个`,
+          };
+        }
+
+        // 对每个参数递归验证
+        if (['ADD', 'SUBTRACT', 'MULTIPLY', 'DIVIDE', 'AVERAGE'].includes(functionName)) {
+          // 数值运算函数：参数必须是数值类型的字段、数字常量或返回数值的函数
+          for (let i = 0; i < params.length; i++) {
+            const param = params[i];
+            const paramType = validateParameter(param);
+
+            if (paramType.isValid) {
+              if (paramType.type !== fieldTypes.NUMBER && paramType.type !== 'number-function') {
+                return {
+                  isValid: false,
+                  error: `函数 ${functionName} 的参数必须是数值类型，但参数 ${i + 1} 是 ${
+                    paramType.type
+                  } 类型`,
+                };
+              }
+            } else {
+              return paramType; // 返回验证错误
+            }
+          }
+        } else if (functionName === 'CONCATENATE') {
+          // 文本连接函数：参数可以是任何类型，会自动转换为文本
+          // 仅检查每个参数的合法性
+          for (let i = 0; i < params.length; i++) {
+            const paramType = validateParameter(params[i]);
+            if (!paramType.isValid) {
+              return paramType; // 返回验证错误
+            }
+          }
+        } else if (['GT', 'LT', 'GTE', 'LTE'].includes(functionName)) {
+          // 比较函数：参数类型必须匹配（同为数值或同为文本）
+          if (params.length >= 2) {
+            const paramType1 = validateParameter(params[0]);
+            const paramType2 = validateParameter(params[1]);
+
+            if (!paramType1.isValid) return paramType1;
+            if (!paramType2.isValid) return paramType2;
+
+            const isType1Number =
+              paramType1.type === fieldTypes.NUMBER || paramType1.type === 'number-function';
+            const isType2Number =
+              paramType2.type === fieldTypes.NUMBER || paramType2.type === 'number-function';
+
+            if (isType1Number !== isType2Number) {
+              return {
+                isValid: false,
+                error: `函数 ${functionName} 的参数类型必须匹配，但提供的参数类型不一致`,
+              };
+            }
+          }
+        } else {
+          // 其他类型的函数，只验证参数的合法性
+          for (let i = 0; i < params.length; i++) {
+            const paramType = validateParameter(params[i]);
+            if (!paramType.isValid) {
+              return paramType; // 返回验证错误
+            }
+          }
+        }
+
+        return {
+          isValid: true,
+          functionName,
+          parameters: params,
+        };
+      } catch (error) {
+        return {
+          isValid: false,
+          error: `公式解析错误: ${error.message}`,
+        };
+      }
+    };
+
+    // 解析参数列表，考虑嵌套函数
+    const parseParameters = (formulaText) => {
+      // 提取括号内的内容
+      const start = formulaText.indexOf('(') + 1;
+      const end = formulaText.lastIndexOf(')');
+      const parametersText = formulaText.substring(start, end);
+
+      // 如果为空，返回空数组
+      if (!parametersText.trim()) {
+        return { params: [], isValid: true };
+      }
 
       // 检查连续的逗号（表示空参数）
       if (parametersText.includes(',,')) {
@@ -252,89 +360,95 @@ const FormulaEditor = forwardRef(
         };
       }
 
-      // 解析参数
-      const params = parametersText
-        .split(',')
-        .map((p) => p.trim())
-        .filter((p) => p !== '');
+      // 使用栈来处理嵌套括号
+      const params = [];
+      let currentParam = '';
+      let nestLevel = 0;
 
-      // 参数数量检查
-      const minArgs = funcDef.params
-        ? funcDef.params.filter((p) => !p.name.includes('...')).length
-        : funcDef.minArgs || 0;
+      for (let i = 0; i < parametersText.length; i++) {
+        const char = parametersText[i];
 
-      const maxArgs =
-        funcDef.params && funcDef.params.some((p) => p.name.includes('...'))
-          ? Infinity
-          : funcDef.maxArgs || minArgs;
-
-      if (params.length < minArgs) {
-        return {
-          isValid: false,
-          error: `函数 ${functionName} 至少需要 ${minArgs} 个参数，但只提供了 ${params.length} 个`,
-        };
-      }
-
-      if (maxArgs !== Infinity && params.length > maxArgs) {
-        return {
-          isValid: false,
-          error: `函数 ${functionName} 最多接受 ${maxArgs} 个参数，但提供了 ${params.length} 个`,
-        };
-      }
-
-      // 参数类型检查 - 核心改进部分
-      if (['ADD', 'SUBTRACT', 'MULTIPLY', 'DIVIDE', 'SUM', 'AVERAGE'].includes(functionName)) {
-        // 数值运算函数：参数必须是数值类型的字段或数字常量
-        for (let i = 0; i < params.length; i++) {
-          const param = params[i];
-
-          // 如果是数字常量，跳过
-          if (!isNaN(parseFloat(param)) && isFinite(param)) {
-            continue;
-          }
-
-          // 如果是字段名，检查类型
-          const field = fields.find((f) => f.name === param);
-          if (field) {
-            if (field.type !== fieldTypes.NUMBER) {
-              return {
-                isValid: false,
-                error: `函数 ${functionName} 的参数必须是数值类型，但提供的是 ${field.type} 类型`,
-              };
-            }
-          } else {
-            // 不是字段名也不是数字常量
-            return {
-              isValid: false,
-              error: `函数 ${functionName} 的参数 "${param}" 无法识别，必须是数值字段或数字常量`,
-            };
-          }
-        }
-      } else if (functionName === 'CONCATENATE') {
-        // 文本连接函数：参数可以是任何类型，会自动转换为文本
-        // 无需特别检查
-      } else if (['GT', 'LT', 'GTE', 'LTE'].includes(functionName)) {
-        // 比较函数：参数类型必须匹配（同为数值或同为文本）
-        if (params.length >= 2) {
-          const param1 = params[0];
-          const param2 = params[1];
-
-          const type1 = getParamType(param1);
-          const type2 = getParamType(param2);
-
-          if (type1 && type2 && type1 !== type2) {
-            return {
-              isValid: false,
-              error: `函数 ${functionName} 的参数类型必须匹配，但提供的是 ${type1} 和 ${type2}`,
-            };
-          }
+        if (char === '(') {
+          nestLevel++;
+          currentParam += char;
+        } else if (char === ')') {
+          nestLevel--;
+          currentParam += char;
+        } else if (char === ',' && nestLevel === 0) {
+          // 只在最外层处理逗号分隔
+          params.push(currentParam.trim());
+          currentParam = '';
+        } else {
+          currentParam += char;
         }
       }
 
+      // 添加最后一个参数
+      if (currentParam.trim()) {
+        params.push(currentParam.trim());
+      }
+
+      return { params, isValid: true };
+    };
+
+    // 验证单个参数，返回其类型
+    const validateParameter = (param) => {
+      // 检查是否是数字
+      if (!isNaN(parseFloat(param)) && isFinite(param)) {
+        return { isValid: true, type: fieldTypes.NUMBER };
+      }
+
+      // 检查是否是字符串常量
+      if (
+        (param.startsWith('"') && param.endsWith('"')) ||
+        (param.startsWith("'") && param.endsWith("'"))
+      ) {
+        return { isValid: true, type: fieldTypes.TEXT };
+      }
+
+      // 检查是否是字段
+      const field = fields.find((f) => f.name === param);
+      if (field) {
+        return { isValid: true, type: field.type };
+      }
+
+      // 检查是否是嵌套函数
+      const nestedFuncMatch = param.match(/^([A-Za-z]+)\(/);
+      if (nestedFuncMatch && param.endsWith(')')) {
+        const nestedFuncName = nestedFuncMatch[1].toUpperCase();
+
+        // 检查是否是有效的函数
+        if (!functionDefinitions[nestedFuncName]) {
+          return {
+            isValid: false,
+            error: `未知的嵌套函数: ${nestedFuncName}`,
+          };
+        }
+
+        // 递归验证嵌套函数
+        const nestedValidation = validateFormula(param);
+        if (!nestedValidation.isValid) {
+          return nestedValidation;
+        }
+
+        // 返回函数的返回类型
+        if (['ADD', 'SUBTRACT', 'MULTIPLY', 'DIVIDE', 'AVERAGE'].includes(nestedFuncName)) {
+          return { isValid: true, type: 'number-function' };
+        } else if (['CONCATENATE'].includes(nestedFuncName)) {
+          return { isValid: true, type: fieldTypes.TEXT };
+        } else if (
+          ['AND', 'OR', 'NOT', 'ISEMPTY', 'EQ', 'GT', 'LT', 'GTE', 'LTE'].includes(nestedFuncName)
+        ) {
+          return { isValid: true, type: 'boolean-function' };
+        } else {
+          return { isValid: true, type: 'unknown-function' };
+        }
+      }
+
+      // 无法识别的参数
       return {
-        isValid: true,
-        functionName,
-        parameters: params,
+        isValid: false,
+        error: `无法识别的参数: "${param}"`,
       };
     };
 
@@ -359,6 +473,26 @@ const FormulaEditor = forwardRef(
         return fieldTypes.TEXT;
       }
 
+      // 检查是否是嵌套函数调用
+      const nestedFuncMatch = param.match(/^([A-Za-z]+)\(/);
+      if (nestedFuncMatch) {
+        const functionName = nestedFuncMatch[1].toUpperCase();
+        // 如果是数值类型的函数，返回NUMBER类型
+        if (['ADD', 'SUBTRACT', 'MULTIPLY', 'DIVIDE', 'AVERAGE'].includes(functionName)) {
+          return fieldTypes.NUMBER;
+        }
+        // 如果是逻辑类型的函数，返回逻辑类型
+        if (
+          ['AND', 'OR', 'NOT', 'ISEMPTY', 'EQ', 'GT', 'LT', 'GTE', 'LTE'].includes(functionName)
+        ) {
+          return 'boolean';
+        }
+        // 如果是文本函数，返回TEXT类型
+        if (['CONCATENATE'].includes(functionName)) {
+          return fieldTypes.TEXT;
+        }
+      }
+
       // 无法确定类型
       return null;
     };
@@ -374,7 +508,7 @@ const FormulaEditor = forwardRef(
         const pattern = new RegExp(`\\b(${funcName})\\(`, 'g');
         highlightedHtml = highlightedHtml.replace(
           pattern,
-          '<span class="highlight-function">$1</span>(',
+          `<span class="${styles.highlightFunction}">$1</span>(`,
         );
       });
 
@@ -384,14 +518,16 @@ const FormulaEditor = forwardRef(
         const pattern = new RegExp(`\\b(${fieldName})\\b`, 'g');
         highlightedHtml = highlightedHtml.replace(
           pattern,
-          `<span class="highlight-field highlight-${fieldType}">${fieldName}</span>`,
+          `<span class="${styles.highlightField} ${
+            styles['highlight' + fieldType.charAt(0).toUpperCase() + fieldType.slice(1)]
+          }">${fieldName}</span>`,
         );
       });
 
       // 高亮括号和逗号
       highlightedHtml = highlightedHtml
-        .replace(/(\(|\))/g, '<span class="highlight-bracket">$1</span>')
-        .replace(/,/g, '<span class="highlight-comma">,</span>');
+        .replace(/(\(|\))/g, `<span class="${styles.highlightBracket}">$1</span>`)
+        .replace(/,/g, `<span class="${styles.highlightComma}">,</span>`);
 
       // 更新高亮层
       highlightLayerRef.current.innerHTML = highlightedHtml;
@@ -410,12 +546,21 @@ const FormulaEditor = forwardRef(
       }
     };
 
+    // 获取TextArea原生DOM元素
+    const getTextAreaElement = () => {
+      if (editorRef.current) {
+        // Access the native textarea element inside antd's TextArea
+        return editorRef.current.resizableTextArea.textArea;
+      }
+      return null;
+    };
+
     // 插入字段
     const insertField = (fieldName) => {
-      if (editorRef.current) {
-        const textarea = editorRef.current;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
+      const textAreaElement = getTextAreaElement();
+      if (textAreaElement) {
+        const start = textAreaElement.selectionStart;
+        const end = textAreaElement.selectionEnd;
         const beforeCursor = formula.substring(0, start);
         const afterCursor = formula.substring(end);
 
@@ -448,13 +593,14 @@ const FormulaEditor = forwardRef(
 
         const newFormula = beforeCursor + insert + afterCursor;
         setFormula(newFormula);
-        textarea.value = newFormula;
         updateHighlight(newFormula);
 
-        // 更新光标位置
-        const newCursorPos = start + insert.length;
-        textarea.focus();
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        // 需要在状态更新后设置光标位置
+        setTimeout(() => {
+          const newCursorPos = start + insert.length;
+          textAreaElement.focus();
+          textAreaElement.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
 
         if (onChange) {
           onChange(newFormula);
@@ -466,13 +612,13 @@ const FormulaEditor = forwardRef(
 
     // 插入函数
     const insertFunction = (funcName) => {
-      if (editorRef.current) {
+      const textAreaElement = getTextAreaElement();
+      if (textAreaElement) {
         const fn = functionDefinitions[funcName];
         setSelectedFunction({ ...fn, name: funcName });
 
-        const textarea = editorRef.current;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
+        const start = textAreaElement.selectionStart;
+        const end = textAreaElement.selectionEnd;
         const beforeCursor = formula.substring(0, start);
         const afterCursor = formula.substring(end);
 
@@ -480,13 +626,14 @@ const FormulaEditor = forwardRef(
         const newFormula = beforeCursor + insert + afterCursor;
 
         setFormula(newFormula);
-        textarea.value = newFormula;
         updateHighlight(newFormula);
 
-        // 更新光标位置到括号内
-        const newCursorPos = start + funcName.length + 1;
-        textarea.focus();
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        // 需要在状态更新后设置光标位置
+        setTimeout(() => {
+          const newCursorPos = start + funcName.length + 1;
+          textAreaElement.focus();
+          textAreaElement.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
 
         if (onChange) {
           onChange(newFormula);
@@ -540,15 +687,8 @@ const FormulaEditor = forwardRef(
           }
         }
 
-        // 设置验证结果
-        setValidationResult({
-          isValid: true,
-          originalFormula: formula,
-          translatedFormula,
-        });
-
-        // 显示翻译弹窗
-        setTranslationVisible(true);
+        // 显示成功消息
+        messageApi.success('公式格式正确');
         setError(null);
         return true;
       } catch (err) {
@@ -594,9 +734,9 @@ const FormulaEditor = forwardRef(
         <List.Item
           key={field.name}
           onClick={() => insertField(field.name)}
-          className="field-item"
+          className={styles.fieldItem}
         >
-          <div className="field-item-content">
+          <div className={styles.fieldItemContent}>
             <Text>{field.name}</Text>
             <Tag color={getTypeColor(field.type)}>{field.type}</Tag>
           </div>
@@ -607,7 +747,7 @@ const FormulaEditor = forwardRef(
     // 渲染字段列表
     const renderFieldGroups = () => {
       return (
-        <div className="fields-container">
+        <div className={styles.fieldsContainer}>
           <List
             size="small"
             dataSource={filteredFields}
@@ -637,6 +777,7 @@ const FormulaEditor = forwardRef(
               style={{ fontSize: '12px' }}
             />
           )}
+          className={styles.collapsePanel}
         >
           {Object.keys(filteredFunctionGroups).map((group) => (
             <Panel
@@ -650,7 +791,7 @@ const FormulaEditor = forwardRef(
                   <List.Item
                     key={func}
                     onClick={() => insertFunction(func)}
-                    className="function-item"
+                    className={styles.functionItem}
                   >
                     <Text>{func}</Text>
                   </List.Item>
@@ -674,16 +815,16 @@ const FormulaEditor = forwardRef(
       <>
         {contextHolder}
         <Layout
-          className="formula-editor-layout"
+          className={styles.formulaEditorLayout}
           style={containerStyle}
         >
           <Content
-            className="formula-content"
+            className={styles.formulaContent}
             style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
           >
-            <div className="formula-section">
-              <div className="formula-header">
-                <div className="formula-label">公式编辑</div>
+            <div className={styles.formulaSection}>
+              <div className={styles.formulaHeader}>
+                <div className={styles.formulaLabel}>公式编辑</div>
                 <Space>
                   <Button
                     type="primary"
@@ -694,77 +835,76 @@ const FormulaEditor = forwardRef(
                   </Button>
                 </Space>
               </div>
-              <div
-                className="editor-wrapper"
-                style={{ position: 'relative' }}
-              >
-                <div className="editor-container">
+              <div className={styles.editorWrapper}>
+                <div className={styles.editorContainer}>
                   {/* 高亮层 */}
                   <div
-                    className="highlight-layer"
+                    className={styles.highlightLayer}
                     ref={highlightLayerRef}
                   ></div>
 
                   {/* 编辑器 */}
-                  <textarea
+                  <TextArea
                     ref={editorRef}
-                    className="formula-textarea"
+                    className={styles.formulaTextarea}
                     value={formula}
                     onChange={handleEditorChange}
                     spellCheck="false"
+                    autoSize={{ minRows: 1, maxRows: 6 }}
+                    bordered={false}
                   />
                 </div>
 
-                {/* {error && (
-                  <div className="error-message">
+                {error && (
+                  <div className={styles.errorMessage}>
                     <ExclamationCircleOutlined /> {error}
                   </div>
-                )} */}
+                )}
               </div>
             </div>
 
             {/* 面板布局 - 三等分 */}
-            <div className="panels-section">
-              <Layout className="panels-layout">
+            <div className={styles.panelsSection}>
+              <Layout className={styles.panelsLayout}>
                 {/* 左侧字段面板 */}
                 <Sider
                   width="33.3%"
-                  className="left-sider"
+                  className={styles.leftSider}
                 >
                   <Card
                     title={<Text strong>表单字段</Text>}
-                    className="panel-card"
+                    className={styles.panelCard}
                   >
                     <Input
                       placeholder="搜索字段"
                       prefix={<SearchOutlined />}
                       value={searchFieldTerm}
                       onChange={(e) => setSearchFieldTerm(e.target.value)}
-                      className="search-input"
+                      className={styles.searchInput}
                       allowClear
                     />
-                    <div className="panel-content">{renderFieldGroups()}</div>
+                    <div className={styles.panelContent}>{renderFieldGroups()}</div>
                   </Card>
                 </Sider>
 
                 {/* 中间函数面板 */}
                 <Content
-                  className="middle-content"
+                  className={styles.middleContent}
                   width="33.3%"
                 >
                   <Card
                     title={<Text strong>函数列表</Text>}
-                    className="panel-card"
+                    className={styles.panelCard}
                   >
                     <Input
                       placeholder="搜索函数"
                       prefix={<SearchOutlined />}
                       value={searchFuncTerm}
                       onChange={(e) => setSearchFuncTerm(e.target.value)}
-                      className="search-input"
+                      className={styles.searchInput}
                       allowClear
                     />
-                    <div className="panel-content">
+                    <div className={styles.panelContent}>
                       {Object.keys(filteredFunctionGroups).length > 0 ? (
                         renderFunctionGroups()
                       ) : (
@@ -780,21 +920,21 @@ const FormulaEditor = forwardRef(
                 {/* 右侧说明面板 */}
                 <Sider
                   width="33.3%"
-                  className="right-sider"
+                  className={styles.rightSider}
                 >
                   <Card
                     title={<Text strong>函数说明</Text>}
-                    className="panel-card"
+                    className={styles.panelCard}
                   >
-                    <div className="panel-content">
+                    <div className={styles.panelContent}>
                       {selectedFunction ? (
-                        <div className="function-doc">
+                        <div className={styles.functionDoc}>
                           <Title level={5}>{selectedFunction.name}</Title>
                           <Paragraph>{selectedFunction.description}</Paragraph>
                           <Divider orientation="left">用法</Divider>
-                          <div className="syntax-box">{selectedFunction.syntax}</div>
+                          <div className={styles.syntaxBox}>{selectedFunction.syntax}</div>
                           <Divider orientation="left">示例</Divider>
-                          <div className="example-box">{selectedFunction.example}</div>
+                          <div className={styles.exampleBox}>{selectedFunction.example}</div>
 
                           <Button
                             type="link"
@@ -832,14 +972,14 @@ const FormulaEditor = forwardRef(
             </Button>,
           ]}
           width={700}
-          className="function-detail-modal"
+          className={styles.functionDetailModal}
         >
           {selectedFunction && (
-            <div className="function-detail-content">
+            <div className={styles.functionDetailContent}>
               <Paragraph>{selectedFunction.details || selectedFunction.description}</Paragraph>
 
               <Divider orientation="left">语法</Divider>
-              <div className="syntax-box">{selectedFunction.syntax}</div>
+              <div className={styles.syntaxBox}>{selectedFunction.syntax}</div>
 
               <Divider orientation="left">参数说明</Divider>
               {selectedFunction.params && selectedFunction.params.length > 0 ? (
@@ -867,7 +1007,7 @@ const FormulaEditor = forwardRef(
               )}
 
               <Divider orientation="left">使用示例</Divider>
-              <div className="example-box">{selectedFunction.example}</div>
+              <div className={styles.exampleBox}>{selectedFunction.example}</div>
 
               <Divider orientation="left">注意事项</Divider>
               <Paragraph>
@@ -880,48 +1020,7 @@ const FormulaEditor = forwardRef(
             </div>
           )}
         </Modal>
-        <Modal
-          title="公式转换结果"
-          open={translationVisible}
-          onCancel={() => setTranslationVisible(false)}
-          footer={[
-            <Button
-              key="close"
-              onClick={() => setTranslationVisible(false)}
-            >
-              关闭
-            </Button>,
-          ]}
-          width={600}
-        >
-          {validationResult && (
-            <div className="translation-result">
-              <div className="translation-header">
-                <CheckCircleOutlined className="translation-success-icon" />
-                <Text
-                  strong
-                  style={{ fontSize: '16px' }}
-                >
-                  公式格式正确
-                </Text>
-              </div>
-
-              <div style={{ marginBottom: '16px' }}>
-                <Title level={5}>中文公式:</Title>
-                <div className="formula-code chinese-formula">
-                  {validationResult.originalFormula}
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '16px' }}>
-                <Title level={5}>英文公式:</Title>
-                <div className="formula-code english-formula">
-                  {validationResult.translatedFormula}
-                </div>
-              </div>
-            </div>
-          )}
-        </Modal>
+        {/* 移除了公式转换结果弹窗 */}
       </>
     );
   },

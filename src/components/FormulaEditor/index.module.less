@@ -1,4 +1,4 @@
-.formula-editor-layout {
+.formulaEditorLayout {
   display: flex;
   flex-direction: column;
   background-color: #f5f7fa;
@@ -7,7 +7,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.formula-content {
+.formulaContent {
   padding: 20px;
   width: 100%;
   max-width: 1200px;
@@ -16,14 +16,14 @@
   flex-direction: column;
 }
 
-.formula-header {
+.formulaHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
 }
 
-.formula-section {
+.formulaSection {
   background-color: white;
   padding: 16px;
   border-radius: 8px 8px 0 0;
@@ -31,31 +31,31 @@
   position: relative;
 }
 
-.formula-label {
+.formulaLabel {
   font-size: 16px;
   font-weight: 500;
   color: #333;
   display: flex;
   align-items: center;
+
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 16px;
+    background-color: #1890ff;
+    margin-right: 8px;
+    border-radius: 2px;
+  }
 }
 
-.formula-label::before {
-  content: '';
-  display: inline-block;
-  width: 4px;
-  height: 16px;
-  background-color: #1890ff;
-  margin-right: 8px;
-  border-radius: 2px;
-}
-
-.editor-wrapper {
+.editorWrapper {
   position: relative;
 }
 
-.editor-container {
+.editorContainer {
   position: relative;
-  height: 48px;
+  min-height: 48px;
   border-radius: 6px;
   overflow: hidden;
   transition: all 0.3s;
@@ -63,28 +63,27 @@
   background-color: #fff;
 }
 
-/* 公式编辑器样式 */
-.formula-textarea {
-  position: absolute;
-  top: 0;
-  left: 0;
+.formulaTextarea {
   width: 100%;
-  height: 100%;
-  padding: 8px 12px;
-  font-family: 'Fira Code', monospace, Consolas, 'Courier New', Courier;
-  font-size: 14px;
-  line-height: 1.6;
-  color: transparent;
-  background: transparent;
-  caret-color: #000;
-  resize: none;
-  border: none;
-  outline: none;
-  z-index: 2;
+  font-family: 'Fira Code', monospace, Consolas, 'Courier New', Courier !important;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+  padding: 8px 12px !important;
+  resize: none !important;
+  min-height: 48px !important;
+  color: transparent !important;
+  background: transparent !important;
+  caret-color: #000 !important;
+  z-index: 2 !important;
+  position: relative !important;
+
+  &:focus {
+    border-color: #40a9ff !important;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+  }
 }
 
-/* 高亮层样式 */
-.highlight-layer {
+.highlightLayer {
   position: absolute;
   top: 0;
   left: 0;
@@ -101,41 +100,37 @@
   z-index: 1;
 }
 
-/* 高亮函数名 */
-.highlight-function {
+.highlightFunction {
   color: #00c853;
   font-weight: bold;
 }
 
-/* 高亮字段 */
-.highlight-field {
+.highlightField {
   font-weight: bold;
 }
 
-/* 高亮特定类型的字段 */
-.highlight-text {
+.highlightText {
   color: #2196f3;
 }
 
-.highlight-number {
+.highlightNumber {
   color: #ff9100;
 }
 
-.highlight-datetime {
+.highlightDatetime {
   color: #9c27b0;
 }
 
-/* 高亮括号和逗号 */
-.highlight-bracket {
+.highlightBracket {
   color: #546e7a;
   font-weight: 500;
 }
 
-.highlight-comma {
+.highlightComma {
   color: #546e7a;
 }
-/* 
-.error-message {
+
+.errorMessage {
   margin-top: 12px;
   padding: 10px 16px;
   background-color: #fff2f0;
@@ -146,9 +141,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-} */
+}
 
-.panels-section {
+.panelsSection {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -157,7 +152,7 @@
   min-height: 220px;
 }
 
-.panels-layout {
+.panelsLayout {
   flex: 1;
   background-color: white;
   border-radius: 8px;
@@ -167,13 +162,13 @@
   min-height: 220px;
 }
 
-.left-sider,
-.right-sider {
+.leftSider,
+.rightSider {
   overflow: hidden;
   background-color: white;
 }
 
-.middle-content {
+.middleContent {
   flex: 1;
   overflow: hidden;
   background-color: white;
@@ -181,116 +176,115 @@
   border-right: 1px solid #f0f0f0;
 }
 
-/* 面板卡片样式 */
-.panel-card {
+.panelCard {
   height: 100%;
   display: flex;
   flex-direction: column;
   border: none !important;
+
+  :global(.ant-card-head) {
+    padding: 12px 16px;
+    min-height: auto;
+    flex-shrink: 0;
+    border-bottom: 1px solid #f0f0f0;
+    background-color: #fafafa;
+  }
+
+  :global(.ant-card-head-title) {
+    padding: 0;
+    font-size: 15px;
+    font-weight: 500;
+    color: #262626;
+  }
+
+  :global(.ant-card-body) {
+    padding: 12px 16px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
 }
 
-.panel-card .ant-card-head {
-  padding: 12px 16px;
-  min-height: auto;
-  flex-shrink: 0;
-  border-bottom: 1px solid #f0f0f0;
-  background-color: #fafafa;
-}
-
-.panel-card .ant-card-head-title {
-  padding: 0;
-  font-size: 15px;
-  font-weight: 500;
-  color: #262626;
-}
-
-.panel-card .ant-card-body {
-  padding: 12px 16px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.search-input {
+.searchInput {
   margin-bottom: 12px;
   flex-shrink: 0;
+
+  :global(.ant-input) {
+    border-radius: 4px;
+  }
+
+  :global(.ant-input:focus),
+  :global(.ant-input-focused) {
+    border-color: #1890ff;
+    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+  }
 }
 
-.search-input .ant-input {
-  border-radius: 4px;
-}
-
-.search-input .ant-input:focus,
-.search-input .ant-input-focused {
-  border-color: #1890ff;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
-}
-
-.panel-content {
+.panelContent {
   flex: 1;
   overflow-y: auto;
   padding-right: 4px;
 }
 
-/* 字段项样式 */
-.field-item,
-.function-item {
+.fieldItem,
+.functionItem {
   cursor: pointer;
   transition: all 0.3s;
   border-radius: 4px;
   padding: 6px 12px;
   margin-bottom: 4px;
   border-left: 3px solid transparent;
+
+  &:hover {
+    background-color: #f5f5f5;
+    border-left-color: #1890ff;
+  }
 }
 
-.field-item:hover,
-.function-item:hover {
-  background-color: #f5f5f5;
-  border-left-color: #1890ff;
-}
-
-.field-item-content {
+.fieldItemContent {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
 }
 
-/* 折叠面板样式 */
-.ant-collapse-ghost {
-  background-color: transparent !important;
+.collapsePanel {
+  :global(.ant-collapse-ghost) {
+    background-color: transparent !important;
+  }
+
+  :global(.ant-collapse-ghost > .ant-collapse-item) {
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  :global(.ant-collapse-ghost > .ant-collapse-item:last-child) {
+    border-bottom: none;
+  }
+
+  :global(.ant-collapse-ghost > .ant-collapse-item > .ant-collapse-header) {
+    padding: 6px 0;
+  }
+
+  :global(.ant-collapse-ghost > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box) {
+    padding: 6px 0 12px 12px;
+  }
 }
 
-.ant-collapse-ghost > .ant-collapse-item {
-  border-bottom: 1px solid #f0f0f0;
+.functionDetailModal {
+  :global(.ant-modal-header) {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  :global(.ant-modal-body) {
+    padding: 20px 24px;
+    border: 1px dashed #eee;
+    border-radius: 4px;
+  }
 }
 
-.ant-collapse-ghost > .ant-collapse-item:last-child {
-  border-bottom: none;
-}
-
-.ant-collapse-ghost > .ant-collapse-item > .ant-collapse-header {
-  padding: 6px 0;
-}
-
-.ant-collapse-ghost > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box {
-  padding: 6px 0 12px 12px;
-}
-
-/* 函数详情弹窗样式 */
-.function-detail-modal .ant-modal-header {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.function-detail-modal .ant-modal-body {
-  padding: 20px 24px;
-  border: 1px dashed #eee;
-  border-radius: 4px;
-}
-
-.syntax-box {
+.syntaxBox {
   background-color: #f5f7fa;
   padding: 16px;
   border-radius: 6px;
@@ -298,7 +292,7 @@
   border-left: 4px solid #1890ff;
 }
 
-.example-box {
+.exampleBox {
   background-color: #f5f7fa;
   padding: 16px;
   border-radius: 6px;
@@ -306,24 +300,23 @@
   border-left: 4px solid #52c41a;
 }
 
-/* 翻译结果弹窗样式 */
-.translation-result {
+.translationResult {
   padding: 16px 0;
 }
 
-.translation-header {
+.translationHeader {
   display: flex;
   align-items: center;
   margin-bottom: 20px;
 }
 
-.translation-success-icon {
+.translationSuccessIcon {
   font-size: 22px;
   color: #52c41a;
   margin-right: 12px;
 }
 
-.formula-code {
+.formulaCode {
   background-color: #f5f7fa;
   padding: 16px;
   border-radius: 6px;
@@ -336,49 +329,34 @@
   border-left: 4px solid #1890ff;
 }
 
-.chinese-formula {
+.chineseFormula {
   border-left-color: #722ed1;
 }
 
-.english-formula {
+.englishFormula {
   border-left-color: #13c2c2;
 }
 
-/* 响应式布局调整 */
+/* Responsive layout adjustments */
 @media (max-width: 1280px) {
-  .formula-content {
+  .formulaContent {
     padding: 12px;
   }
 
-  .panels-layout {
+  .panelsLayout {
     flex-direction: column;
   }
 
-  .left-sider,
-  .middle-content,
-  .right-sider {
+  .leftSider,
+  .middleContent,
+  .rightSider {
     width: 100% !important;
     border: none;
     border-bottom: 1px solid #f0f0f0;
   }
 
-  .panel-card {
+  .panelCard {
     height: auto;
     min-height: 200px;
   }
-}
-
-/* 自动调整编辑器高度 */
-.editor-container:focus-within {
-  height: auto;
-  min-height: 48px;
-  max-height: 200px;
-}
-
-.formula-textarea:focus + .highlight-layer,
-.formula-textarea:focus {
-  height: auto;
-  min-height: 48px;
-  max-height: 200px;
-  overflow-y: auto;
 }
