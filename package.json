@@ -23,6 +23,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "globals": "^15.15.0",
     "less": "^4.2.0",
+    "unocss": "66.1.0-beta.4",
     "vite": "^6.2.0"
   },
   "pnpm": {
