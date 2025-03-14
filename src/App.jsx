@@ -92,7 +92,7 @@ function App() {
       {contextHolder}
 
       <FormulaEditor
-        ref={formulaEditorRef}
+        // ref={formulaEditorRef}
         height="45vh"
         fields={FIELDS}
         fieldTypes={FIELD_TYPES}
@@ -103,85 +103,6 @@ function App() {
           console.log('公式已更新:', newFormula);
         }}
       />
-
-      {/* 公式计算区域 */}
-      <div style={{ padding: '20px' }}>
-        <Card
-          title="公式计算测试"
-          style={{ marginTop: '20px' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '16px' }}>
-            <div style={{ flex: 1, marginRight: '16px' }}>
-              <Text strong>变量值 (JSON格式):</Text>
-              <TextArea
-                value={variablesJson}
-                onChange={(e) => setVariablesJson(e.target.value)}
-                style={{ marginTop: '8px', fontFamily: 'monospace' }}
-                rows={5}
-                placeholder='例如: {"age": 25, "count": 10}'
-              />
-              <Paragraph
-                type="secondary"
-                style={{ marginTop: '8px' }}
-              >
-                请使用JSON格式输入变量值，例如: {`{"age": 4, "count": 3}`}
-              </Paragraph>
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'flex-end',
-                paddingBottom: '24px',
-              }}
-            >
-              <Button
-                type="primary"
-                onClick={evaluateFormula}
-              >
-                计算公式
-              </Button>
-            </div>
-          </div>
-
-          <Divider />
-
-          {error && (
-            <div
-              style={{
-                padding: '12px 16px',
-                backgroundColor: '#fff2f0',
-                border: '1px solid #ffccc7',
-                borderRadius: '4px',
-                marginBottom: '16px',
-              }}
-            >
-              <Text type="danger">{error}</Text>
-            </div>
-          )}
-
-          {calculationResult !== null && !error && (
-            <div>
-              <Title level={4}>计算结果:</Title>
-              <div
-                style={{
-                  padding: '16px',
-                  backgroundColor: '#f6ffed',
-                  border: '1px solid #b7eb8f',
-                  borderRadius: '4px',
-                  marginBottom: '16px',
-                }}
-              >
-                <Text strong>
-                  {typeof calculationResult === 'object'
-                    ? JSON.stringify(calculationResult, null, 2)
-                    : calculationResult.toString()}
-                </Text>
-              </div>
-            </div>
-          )}
-        </Card>
-      </div>
     </div>
   );
 }
